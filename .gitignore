@@ -1,0 +1,25 @@
+# Environment variables — never commit these
+.env
+.env.local
+.env.production
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Scraper logs
+*.log
+logs/
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Node (if frontend tooling added later)
+node_modules/
+
+# Docker
+.docker/
