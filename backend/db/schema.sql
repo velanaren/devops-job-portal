@@ -1,0 +1,2 @@
+-- Database schema for DevOps Job Portal
+-- Tables: jobs, scrape_logs
