@@ -7,7 +7,137 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- populated by app.js -->
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="header-logo">⚙️</span>
+        <h1 class="header-title">DevOps Job Portal</h1>
+      </div>
+      <p class="header-subtitle">
+        Fresh DevOps, SRE &amp; Platform roles — updated daily at 6AM IST
+      </p>
+      <p class="header-updated" id="last-updated">Loading...</p>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="filters-section" aria-label="Job filters">
+      <div class="filters-inner">
+
+        <div class="filter-row">
+          <div class="filter-group">
+            <label for="filter-role" class="filter-label">Role</label>
+            <select id="filter-role" class="filter-select">
+              <option value="">All Roles</option>
+              <option value="devops">DevOps</option>
+              <option value="sre">SRE</option>
+              <option value="platform">Platform Engineer</option>
+              <option value="cloud">Cloud Engineer</option>
+              <option value="appsupport">Application Support</option>
+              <option value="techsupport">Tech Support</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-location" class="filter-label">Location</label>
+            <select id="filter-location" class="filter-select">
+              <option value="">All Locations</option>
+              <option value="Remote Global">🌍 Remote Global</option>
+              <option value="Remote India">🇮🇳 Remote India</option>
+              <option value="Chennai">📍 Chennai</option>
+              <option value="Bengaluru">📍 Bengaluru</option>
+              <option value="Other">📍 Other</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-type" class="filter-label">Job Type</label>
+            <select id="filter-type" class="filter-select">
+              <option value="">All Types</option>
+              <option value="remote">Remote</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">On-site</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-source" class="filter-label">Source</label>
+            <select id="filter-source" class="filter-select">
+              <option value="">All Sources</option>
+              <option value="RemoteOK">RemoteOK</option>
+              <option value="Remotive">Remotive</option>
+              <option value="Jobicy">Jobicy</option>
+              <option value="Arbeitnow">Arbeitnow</option>
+              <option value="HN">Hacker News</option>
+              <option value="Greenhouse">Greenhouse</option>
+              <option value="Lever">Lever</option>
+              <option value="Ashby">Ashby</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-experience" class="filter-label">Experience</label>
+            <select id="filter-experience" class="filter-select">
+              <option value="">All Levels</option>
+              <option value="entry">Entry</option>
+              <option value="mid">Mid</option>
+              <option value="senior">Senior</option>
+              <option value="staff">Staff / Lead</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-posted" class="filter-label">Posted Within</label>
+            <select id="filter-posted" class="filter-select">
+              <option value="7">Last 7 Days</option>
+              <option value="3">Last 3 Days</option>
+              <option value="1">Last 24 Hours</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filters-meta">
+          <span class="job-count" id="job-count">0 jobs found</span>
+          <button class="btn-clear" id="btn-clear" hidden>Clear all filters</button>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="jobs-section" aria-label="Job listings">
+      <div class="jobs-inner">
+        <div id="jobs-container" class="jobs-grid">
+          <p class="loading-msg" id="loading-msg">Loading jobs...</p>
+        </div>
+        <p class="error-msg" id="error-msg" hidden></p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p class="footer-disclaimer">
+        Jobs aggregated from public third-party sources. This portal does not own
+        these listings. Always verify on the original source before applying.
+      </p>
+      <p class="footer-sources">
+        Sources:
+        <a href="https://remoteok.com" target="_blank" rel="noopener noreferrer">RemoteOK</a> ·
+        <a href="https://remotive.com" target="_blank" rel="noopener noreferrer">Remotive</a> ·
+        <a href="https://jobicy.com" target="_blank" rel="noopener noreferrer">Jobicy</a> ·
+        <a href="https://www.arbeitnow.com" target="_blank" rel="noopener noreferrer">Arbeitnow</a> ·
+        <a href="https://news.ycombinator.com" target="_blank" rel="noopener noreferrer">Hacker News</a> ·
+        <a href="https://boards.greenhouse.io" target="_blank" rel="noopener noreferrer">Greenhouse</a> ·
+        <a href="https://jobs.lever.co" target="_blank" rel="noopener noreferrer">Lever</a> ·
+        <a href="https://jobs.ashbyhq.com" target="_blank" rel="noopener noreferrer">Ashby</a>
+      </p>
+    </div>
+  </footer>
+
   <script src="app.js"></script>
+
 </body>
 </html>
