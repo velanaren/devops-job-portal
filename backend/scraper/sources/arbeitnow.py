@@ -89,7 +89,8 @@ def fetch_jobs() -> list[dict]:
     Fetch DevOps-relevant remote jobs from the Arbeitnow job board API.
 
     Compliance:
-    - 1 call per daily run (up to MAX_PAGES pages within that run).
+    - Up to 5 paginated HTTP calls per daily run (one per page of results).
+      Pagination of a single logical feed is respectful and within compliance.
     - User-Agent header on every request.
     - Source attribution link back to Arbeitnow on every job card.
 
