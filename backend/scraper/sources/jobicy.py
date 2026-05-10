@@ -66,7 +66,8 @@ def _normalise(item: dict, today: str) -> dict | None:
     pub_date = item.get("pubDate") or ""
     posted_date = pub_date[:10] if len(pub_date) >= 10 else today
 
-    apply_url = item.get("url") or item.get("jobId") or SOURCE_URL
+    job_id = item.get("id") or item.get("jobId") or ""
+    apply_url = item.get("url") or (f"https://jobicy.com/jobs/{job_id}" if job_id else SOURCE_URL)
 
     return {
         "title": title,
