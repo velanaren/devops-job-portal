@@ -54,8 +54,12 @@ def _normalise(item: dict, today: str) -> dict | None:
 
     location_raw = item.get("jobGeo") or "Worldwide"
 
-    raw_type = (item.get("jobType") or "").lower()
-    job_type = "remote" if "remote" in raw_type else "remote"
+    raw_type = item.get("jobType") or ""
+    if isinstance(raw_type, list):
+        raw_type = " ".join(raw_type).lower()
+    else:
+        raw_type = raw_type.lower()
+    job_type = "remote" if "remote" in raw_type else "onsite"
 
     tags = item.get("jobTags") or []
     if isinstance(tags, list):
