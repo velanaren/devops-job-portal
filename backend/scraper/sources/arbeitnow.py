@@ -62,7 +62,13 @@ def _normalise(item: dict, today: str) -> dict | None:
     skills = ",".join(str(t) for t in tags if t)
 
     created_at = item.get("created_at") or ""
-    posted_date = created_at[:10] if len(created_at) >= 10 else today
+    if isinstance(created_at, int):
+        from datetime import datetime, timezone
+        posted_date = datetime.fromtimestamp(created_at, tz=timezone.utc).date().isoformat()
+    elif isinstance(created_at, str) and len(created_at) >= 10:
+        posted_date = created_at[:10]
+    else:
+        posted_date = today
 
     slug = item.get("slug") or ""
     apply_url = item.get("url") or (f"{SOURCE_URL}/jobs/{slug}" if slug else SOURCE_URL)

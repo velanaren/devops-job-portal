@@ -72,6 +72,10 @@ def run() -> None:
             jobs = fetch_fn()
             duration = time.monotonic() - start
 
+            # Discard jobs where role classification returned 'other' —
+            # these passed the keyword filter but didn't map to a known role.
+            jobs = [j for j in jobs if j.get("role_type") != "other"]
+
             if jobs:
                 insert_jobs(jobs)
 

@@ -85,8 +85,23 @@ class TestDetectRoleType:
     def test_techsupport_l3(self):
         assert detect_role_type("L3 Support Analyst") == "techsupport"
 
-    def test_fallback_to_devops(self):
-        assert detect_role_type("Infrastructure Wizard") == "devops"
+    def test_infra_infrastructure_engineer(self):
+        assert detect_role_type("Infrastructure Engineer") == "infra"
+
+    def test_infra_systems_engineer(self):
+        assert detect_role_type("Systems Engineer") == "infra"
+
+    def test_infra_release_engineer(self):
+        assert detect_role_type("Release Engineer") == "infra"
+
+    def test_infra_operations_engineer(self):
+        assert detect_role_type("Operations Engineer") == "infra"
+
+    def test_fallback_to_other(self):
+        assert detect_role_type("Talent Acquisition Manager") == "other"
+
+    def test_generic_engineer_is_other(self):
+        assert detect_role_type("Engineering Manager AI Fleet") == "other"
 
 
 # ---------------------------------------------------------------------------

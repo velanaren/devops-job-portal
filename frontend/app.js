@@ -4,7 +4,7 @@
    All filtering is client-side — no server round-trips.
    ============================================================ */
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = window.ENV_API_URL || 'http://localhost:8000';
 
 // Full job list loaded once on page load — never mutated.
 let allJobs = [];
