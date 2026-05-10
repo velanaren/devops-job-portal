@@ -1,44 +1,57 @@
 import re
 
-KEYWORDS: list[str] = [
-    "devops",
-    "dev ops",
-    "devsecops",
-    "sre",
-    "site reliability",
-    "platform engineer",
-    "platform engineering",
-    "infrastructure engineer",
-    "infra engineer",
-    "cloud engineer",
-    "cloud infrastructure",
-    "application support",
-    "app support",
-    "tech support",
-    "technical support",
-    "l1 support",
-    "l2 support",
-    "l3 support",
-    "systems engineer",
-    "operations engineer",
-    "release engineer",
-    "build engineer",
+# ---------------------------------------------------------------------------
+# Strict role keyword patterns — word-boundary matched, case-insensitive.
+# Generic terms (engineer, manager, lead, cloud, support alone) are excluded
+# to prevent false-positive matches.
+# ---------------------------------------------------------------------------
+
+_STRICT_ROLE_PATTERNS: list[str] = [
+    r"\bdevops\b",
+    r"\bdev ops\b",
+    r"\bdevsecops\b",
+    r"\bmlops\b",
+    r"\bgitops\b",
+    r"\bsre\b",
+    r"\bsite reliability\b",
+    r"\breliability engineer\b",
+    r"\bplatform engineer\b",
+    r"\bplatform engineering\b",
+    r"\binfrastructure engineer\b",
+    r"\binfra engineer\b",
+    r"\bcloud engineer\b",
+    r"\bcloud infrastructure\b",
+    r"\bcloud operations\b",
+    r"\bcloud platform\b",
+    r"\bapplication support\b",
+    r"\bapp support\b",
+    r"\btech support\b",
+    r"\btechnical support\b",
+    r"\bl1 support\b",
+    r"\bl2 support\b",
+    r"\bl3 support\b",
+    r"\bsystems engineer\b",
+    r"\boperations engineer\b",
+    r"\brelease engineer\b",
+    r"\bbuild engineer\b",
 ]
 
-# Maps internal role_type value to the title/description keywords that identify it.
+_STRICT_KEYWORD_RE = re.compile("|".join(_STRICT_ROLE_PATTERNS), re.IGNORECASE)
+
+# Maps internal role_type value to the patterns that identify it.
 ROLE_TYPE_MAP: dict[str, list[str]] = {
-    "devops": ["devops", "dev ops", "devsecops"],
-    "sre": ["sre", "site reliability"],
-    "platform": ["platform engineer", "platform engineering"],
-    "cloud": ["cloud engineer", "cloud infrastructure"],
-    "appsupport": ["application support", "app support"],
-    "techsupport": [
-        "tech support",
-        "technical support",
-        "l1 support",
-        "l2 support",
-        "l3 support",
-    ],
+    "devops":      [r"\bdevops\b", r"\bdev ops\b", r"\bdevsecops\b", r"\bgitops\b", r"\bmlops\b"],
+    "sre":         [r"\bsre\b", r"\bsite reliability\b", r"\breliability engineer\b"],
+    "platform":    [r"\bplatform engineer\b", r"\bplatform engineering\b"],
+    "cloud":       [r"\bcloud engineer\b", r"\bcloud infrastructure\b", r"\bcloud operations\b", r"\bcloud platform\b"],
+    "appsupport":  [r"\bapplication support\b", r"\bapp support\b"],
+    "techsupport": [r"\btech support\b", r"\btechnical support\b", r"\bl1 support\b", r"\bl2 support\b", r"\bl3 support\b"],
+    "infra":       [r"\binfrastructure engineer\b", r"\binfra engineer\b", r"\bsystems engineer\b", r"\boperations engineer\b", r"\brelease engineer\b", r"\bbuild engineer\b"],
+}
+
+_ROLE_TYPE_COMPILED: dict[str, re.Pattern] = {
+    role: re.compile("|".join(patterns), re.IGNORECASE)
+    for role, patterns in ROLE_TYPE_MAP.items()
 }
 
 _SENIOR_PATTERNS: list[str] = [
@@ -72,38 +85,46 @@ def _normalise(text: str) -> str:
 
 def matches_keyword(title: str, description: str = "") -> bool:
     """
-    Return True if the job title or description contains at least one DevOps keyword.
+    Return True if the job title contains at least one strict role keyword.
+
+    Title is the primary check — a word-boundary regex match against the
+    curated role keyword list. Description is used as a fallback only (for
+    ATS sources where job titles may be generic). Generic terms such as
+    'engineer', 'manager', 'lead', 'cloud', or 'support' alone do NOT match.
 
     Args:
-        title: Job title string.
-        description: Optional job description text.
+        title:       Job title string.
+        description: Optional job description text (fallback only).
 
     Returns:
-        True if a keyword match is found, False otherwise.
+        True if a strict keyword match is found, False otherwise.
     """
-    haystack = _normalise(f"{title} {description}")
-    return any(kw in haystack for kw in KEYWORDS)
+    if _STRICT_KEYWORD_RE.search(title):
+        return True
+    if description and _STRICT_KEYWORD_RE.search(description):
+        return True
+    return False
 
 
 def detect_role_type(title: str) -> str:
     """
-    Detect the primary role type from a job title.
+    Detect the primary role type from a job title using strict keyword patterns.
 
     Checks role types in priority order: devops → sre → platform → cloud →
-    appsupport → techsupport.
+    appsupport → techsupport → infra.
 
     Args:
         title: Job title string.
 
     Returns:
-        One of: 'devops', 'sre', 'platform', 'cloud', 'appsupport', 'techsupport'.
-        Returns 'devops' as a fallback if no specific match is found.
+        One of: 'devops', 'sre', 'platform', 'cloud', 'appsupport',
+        'techsupport', 'infra'. Returns 'other' if no pattern matches —
+        the orchestrator should discard jobs with role_type 'other'.
     """
-    normalised = _normalise(title)
-    for role_type, keywords in ROLE_TYPE_MAP.items():
-        if any(kw in normalised for kw in keywords):
+    for role_type, pattern in _ROLE_TYPE_COMPILED.items():
+        if pattern.search(title):
             return role_type
-    return "devops"
+    return "other"
 
 
 def detect_experience_level(title: str, description: str = "") -> str:
@@ -111,7 +132,7 @@ def detect_experience_level(title: str, description: str = "") -> str:
     Detect experience level from title and description using keyword heuristics.
 
     Args:
-        title: Job title string.
+        title:       Job title string.
         description: Optional job description text.
 
     Returns:
