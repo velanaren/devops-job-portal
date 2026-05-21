@@ -163,6 +163,58 @@ def query_health() -> dict:
     }
 
 
+def count_jobs() -> int:
+    """
+    Return the total number of job records currently in the jobs table.
+
+    Returns:
+        Integer row count.
+    """
+    with get_connection() as conn:
+        row = conn.execute("SELECT COUNT(*) FROM jobs").fetchone()
+    return row[0]
+
+
+def delete_expired_jobs(ttl_days: int = 7) -> int:
+    """
+    Delete all jobs whose fetched_date is older than ttl_days.
+
+    Args:
+        ttl_days: Jobs fetched more than this many days ago are removed (default 7).
+
+    Returns:
+        Number of rows deleted.
+    """
+    cutoff = (date.today() - timedelta(days=ttl_days)).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM jobs WHERE fetched_date < :cutoff", {"cutoff": cutoff}
+        )
+        return cursor.rowcount
+
+
+def delete_source_jobs_before(source_name: str, today: str) -> int:
+    """
+    Delete all jobs for a given source that were fetched before today.
+
+    Called after a successful source fetch so that only today's fresh records
+    remain for that source (previous days' data is removed).
+
+    Args:
+        source_name: The source identifier (e.g. 'RemoteOK').
+        today: ISO date string for today (YYYY-MM-DD).
+
+    Returns:
+        Number of rows deleted.
+    """
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM jobs WHERE source_name = :source AND fetched_date < :today",
+            {"source": source_name, "today": today},
+        )
+        return cursor.rowcount
+
+
 def purge_old_logs(retention_days: int = 30) -> None:
     """
     Delete scrape log entries older than retention_days.
