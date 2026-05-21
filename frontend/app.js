@@ -85,12 +85,13 @@ const renderSkills = (skills) => {
  */
 const sourceLabel = (name) => {
   const map = {
-    RemoteOK: "RemoteOK",
-    Remotive: "Remotive",
-    Jobicy: "Jobicy",
+    RemoteOK:   "RemoteOK",
+    Remotive:   "Remotive",
+    Jobicy:     "Jobicy",
+    Himalayas:  "Himalayas",
     Greenhouse: "Greenhouse",
-    Lever: "Lever",
-    Ashby: "Ashby",
+    Lever:      "Lever",
+    Ashby:      "Ashby",
   };
   return map[name] || name;
 };
