@@ -21,22 +21,19 @@ from db.database import (
     purge_old_logs,
 )
 from scraper.logger import log_failure, log_success
-from scraper.sources.arbeitnow import fetch_jobs as fetch_arbeitnow
 from scraper.sources.ats.ashby import fetch_jobs as fetch_ashby
 from scraper.sources.ats.greenhouse import fetch_jobs as fetch_greenhouse
 from scraper.sources.ats.lever import fetch_jobs as fetch_lever
-from scraper.sources.hn_algolia import fetch_jobs as fetch_hn
 from scraper.sources.jobicy import fetch_jobs as fetch_jobicy
 from scraper.sources.remoteok import fetch_jobs as fetch_remoteok
 from scraper.sources.remotive import fetch_jobs as fetch_remotive
 
 # Each entry: (source_name, fetch_function)
+# Arbeitnow and HN Algolia removed — source files preserved as *.py.disabled
 SOURCES: list[tuple[str, Callable[[], list[dict]]]] = [
     ("RemoteOK",   fetch_remoteok),
     ("Remotive",   fetch_remotive),
     ("Jobicy",     fetch_jobicy),
-    ("Arbeitnow",  fetch_arbeitnow),
-    ("HN",         fetch_hn),
     ("Greenhouse", fetch_greenhouse),
     ("Lever",      fetch_lever),
     ("Ashby",      fetch_ashby),
