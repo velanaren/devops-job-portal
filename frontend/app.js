@@ -303,7 +303,7 @@ const loadJobs = async () => {
     if (!response.ok) throw new Error(`API returned ${response.status}`);
 
     const data = await response.json();
-    // Sort once on load: location priority → newest first.
+    // Sort once on load: role priority → newest first within each role group.
     allJobs = sortJobs(data.jobs || []);
 
     loadingMsg.remove();
