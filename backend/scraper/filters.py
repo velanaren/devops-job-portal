@@ -123,13 +123,9 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
     "techsupport": [
         r"\btech support\b",
         r"\btechnical support\b",
-        r"\bit support\b",
         r"\bl1 support\b",
         r"\bl2 support\b",
         r"\bl3 support\b",
-        r"\bservice desk\b",
-        r"\bhelpdesk\b",
-        r"\bhelp desk\b",
     ],
     "itops": [
         r"\bit operations\b",
@@ -137,6 +133,10 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
         r"\boperations engineer\b",
         r"\bdatabase administrator\b",
         r"\bdba\b",
+        r"\bit support\b",
+        r"\bservice desk\b",
+        r"\bhelpdesk\b",
+        r"\bhelp desk\b",
     ],
 }
 

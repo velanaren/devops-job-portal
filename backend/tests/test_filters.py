@@ -230,14 +230,15 @@ class TestDetectRoleType:
     def test_techsupport_l3(self):
         assert detect_role_type("L3 Support Analyst") == "techsupport"
 
-    def test_techsupport_service_desk(self):
-        assert detect_role_type("Service Desk Agent") == "techsupport"
+    def test_techsupport_service_desk_moved_to_itops(self):
+        # service desk / helpdesk / it support moved to itops role type
+        assert detect_role_type("Service Desk Agent") == "itops"
 
-    def test_techsupport_helpdesk(self):
-        assert detect_role_type("Helpdesk Technician") == "techsupport"
+    def test_techsupport_helpdesk_moved_to_itops(self):
+        assert detect_role_type("Helpdesk Technician") == "itops"
 
-    def test_techsupport_it_support(self):
-        assert detect_role_type("IT Support Specialist") == "techsupport"
+    def test_techsupport_it_support_moved_to_itops(self):
+        assert detect_role_type("IT Support Specialist") == "itops"
 
     # --- IT Ops ---
     def test_itops_operations_engineer(self):
