@@ -82,11 +82,9 @@ const renderSkills = (skills) => {
  */
 const sourceLabel = (name) => {
   const map = {
-    HN: "Hacker News",
     RemoteOK: "RemoteOK",
     Remotive: "Remotive",
     Jobicy: "Jobicy",
-    Arbeitnow: "Arbeitnow",
     Greenhouse: "Greenhouse",
     Lever: "Lever",
     Ashby: "Ashby",
