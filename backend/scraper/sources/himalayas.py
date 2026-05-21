@@ -42,6 +42,14 @@ SEARCH_TERMS = [
     "cloud engineer",
     "infrastructure engineer",
     "site reliability",
+    "devsecops",
+    "mlops",
+    "observability engineer",
+    "release engineer",
+    "systems engineer",
+    "tech support",
+    "it support",
+    "production engineer",
 ]
 
 # Himalayas seniority list item → DB experience_level mapping.
@@ -175,7 +183,7 @@ def fetch_jobs() -> list[dict]:
     Fetch DevOps-relevant jobs from Himalayas using keyword searches.
 
     Compliance:
-    - 6 HTTP calls per daily run (one per SEARCH_TERMS entry).
+    - 14 HTTP calls per daily run (one per SEARCH_TERMS entry).
     - User-Agent header on every request.
     - 1-second sleep between calls.
     - Deduplicates by job["guid"] within the run.
