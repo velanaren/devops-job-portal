@@ -55,9 +55,12 @@ const locationBadge = (tag) => {
   switch (tag) {
     case "Remote Global": return { cls: "badge-remote-global", label: "🌍 Remote Global" };
     case "Remote India":  return { cls: "badge-remote-india",  label: "🇮🇳 Remote India" };
-    case "Chennai":       return { cls: "badge-city",          label: "📍 Chennai" };
     case "Bengaluru":     return { cls: "badge-city",          label: "📍 Bengaluru" };
-    default:              return { cls: "badge-city",          label: "📍 Other" };
+    case "Chennai":       return { cls: "badge-city",          label: "📍 Chennai" };
+    case "Hyderabad":     return { cls: "badge-city",          label: "📍 Hyderabad" };
+    case "Other India":   return { cls: "badge-other-india",   label: "📍 Other India" };
+    case "Global":        return { cls: "badge-global",        label: "🌐 Global" };
+    default:              return { cls: "badge-global",        label: "🌐 Global" };
   }
 };
 
