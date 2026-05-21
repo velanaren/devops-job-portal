@@ -98,12 +98,12 @@ def insert_scrape_log(log: dict) -> None:
         conn.execute(sql, log)
 
 
-def query_jobs(ttl_days: int = 7) -> list[dict]:
+def query_jobs(ttl_days: int = 14) -> list[dict]:
     """
     Return all jobs within the TTL window, ordered by location priority then posted date.
 
     Args:
-        ttl_days: Jobs older than this many days are excluded (default 7).
+        ttl_days: Jobs older than this many days are excluded (default 14).
 
     Returns:
         List of job dicts ordered by location priority (Remote Global first) then

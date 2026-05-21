@@ -74,7 +74,7 @@ def run() -> None:
     try:
         from config.settings import JOB_TTL_DAYS
     except ImportError:
-        JOB_TTL_DAYS = 7
+        JOB_TTL_DAYS = 14
 
     expired = delete_expired_jobs(JOB_TTL_DAYS)
     jobs_after_ttl = count_jobs()

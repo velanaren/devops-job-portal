@@ -2,7 +2,7 @@
 FastAPI application — read-only job portal backend.
 
 Endpoints:
-    GET /api/jobs    — all jobs within the 7-day TTL window
+    GET /api/jobs    — all jobs within the 14-day TTL window
     GET /api/health  — last scraper run status per source
 
 No write endpoints. No scraper trigger endpoints.
@@ -41,14 +41,14 @@ def startup_event() -> None:
 @app.get("/api/jobs", response_model=JobsResponse)
 def get_jobs() -> JobsResponse:
     """
-    Return all job listings within the 7-day TTL window.
+    Return all job listings within the 14-day TTL window.
 
     Jobs are ordered by location priority (Remote Global first) then by most
     recently posted. All filtering happens client-side — this endpoint always
     returns the full cached dataset.
     """
     try:
-        rows = query_jobs(ttl_days=7)
+        rows = query_jobs(ttl_days=14)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Database error: {exc}") from exc
 
@@ -70,7 +70,7 @@ def get_health() -> HealthResponse:
     Used for operational monitoring — not consumed by the frontend.
     """
     try:
-        rows = query_jobs(ttl_days=7)
+        rows = query_jobs(ttl_days=14)
         total_jobs = len(rows)
         health = query_health()
     except Exception as exc:

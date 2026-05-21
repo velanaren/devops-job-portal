@@ -65,6 +65,54 @@ const locationBadge = (tag) => {
 };
 
 /**
+ * Return the numeric priority rank for a location_tag.
+ * Lower number = higher priority (shown first).
+ * @param {string} tag
+ * @returns {number} 1–7
+ */
+const getPriorityScore = (tag) => {
+  const PRIORITY = {
+    "Remote Global": 1,
+    "Remote India":  2,
+    "Bengaluru":     3,
+    "Chennai":       4,
+    "Hyderabad":     5,
+    "Other India":   6,
+    "Global":        7,
+  };
+  return PRIORITY[tag] || 8;
+};
+
+/**
+ * Sort a jobs array by location priority (ascending) then posted date (newest first).
+ * Returns a new array — does not mutate the input.
+ * @param {Array} jobs
+ * @returns {Array}
+ */
+const sortJobs = (jobs) => [...jobs].sort((a, b) => {
+  const pa = getPriorityScore(a.location_tag);
+  const pb = getPriorityScore(b.location_tag);
+  if (pa !== pb) return pa - pb;
+  // Secondary: newest posted_date first.
+  const da = a.posted_date || a.fetched_date || "";
+  const db = b.posted_date || b.fetched_date || "";
+  return db.localeCompare(da);
+});
+
+/**
+ * Return the correct rel attribute value for a source attribution link.
+ * RemoteOK ToS requires "follow" — no nofollow in the rel string.
+ * @param {string} source_name
+ * @returns {string}
+ */
+const getSourceLinkRel = (source_name) => {
+  // Both branches return the same value today.
+  // Keeping this helper makes per-source customisation straightforward.
+  if (source_name === "RemoteOK") return "noopener noreferrer";
+  return "noopener noreferrer";
+};
+
+/**
  * Build a comma-separated skills list into individual tag pills.
  * @param {string|null} skills
  */
@@ -121,8 +169,9 @@ const expLabel = (level) => {
  * @param {Object} job
  */
 const buildCard = (job) => {
-  const badge = locationBadge(job.location_tag);
-  const skills = renderSkills(job.skills);
+  const badge    = locationBadge(job.location_tag);
+  const skills   = renderSkills(job.skills);
+  const linkRel  = getSourceLinkRel(job.source_name);
 
   const article = document.createElement("article");
   article.className = "job-card";
@@ -141,12 +190,12 @@ const buildCard = (job) => {
     ${skills ? `<div class="card-tags">${skills}</div>` : ""}
     <div class="card-footer">
       <span class="card-source">
-        via <a href="${job.source_url}" target="_blank" rel="noopener noreferrer">${sourceLabel(job.source_name)}</a>
+        via <a href="${job.source_url}" target="_blank" rel="${linkRel}">${sourceLabel(job.source_name)}</a>
       </span>
       <a class="btn-apply"
          href="${job.apply_url}"
          target="_blank"
-         rel="noopener noreferrer">
+         rel="${linkRel}">
         Apply →
       </a>
     </div>
@@ -212,11 +261,11 @@ const applyFilters = () => {
     return true;
   });
 
-  renderJobs(filtered);
+  renderJobs(sortJobs(filtered));
 
   // Show "Clear all filters" only when a non-default filter is active.
   const hasActiveFilter =
-    role || location || type || source || experience || (postedDays !== 7);
+    role || location || type || source || experience || (postedDays !== 14);
   btnClear.hidden = !hasActiveFilter;
 };
 
@@ -228,7 +277,7 @@ const clearFilters = () => {
   filterType.value       = "";
   filterSource.value     = "";
   filterExperience.value = "";
-  filterPosted.value     = "7";
+  filterPosted.value     = "14";
   btnClear.hidden        = true;
   renderJobs(allJobs);
   jobCount.textContent   = `${allJobs.length} job${allJobs.length !== 1 ? "s" : ""} found`;
@@ -238,7 +287,7 @@ const clearFilters = () => {
 
 /**
  * Fetch all jobs from the API once on page load.
- * Stores result in allJobs, then renders.
+ * Stores result in allJobs (pre-sorted), then renders.
  */
 const loadJobs = async () => {
   try {
@@ -246,7 +295,8 @@ const loadJobs = async () => {
     if (!response.ok) throw new Error(`API returned ${response.status}`);
 
     const data = await response.json();
-    allJobs = data.jobs || [];
+    // Sort once on load: location priority → newest first.
+    allJobs = sortJobs(data.jobs || []);
 
     loadingMsg.remove();
 
