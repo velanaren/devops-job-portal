@@ -20,8 +20,12 @@
   --badge-remote-global-text: #065f46;
   --badge-remote-india-bg:    #dbeafe;
   --badge-remote-india-text:  #1e40af;
-  --badge-city-bg:            #fef3c7;
-  --badge-city-text:          #92400e;
+  --badge-city-bg:            #ffedd5;
+  --badge-city-text:          #9a3412;
+  --badge-other-india-bg:     #fef9c3;
+  --badge-other-india-text:   #713f12;
+  --badge-global-bg:          #f3f4f6;
+  --badge-global-text:        #374151;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -45,8 +49,12 @@
     --badge-remote-global-text: #6ee7b7;
     --badge-remote-india-bg:    #1e3a5f;
     --badge-remote-india-text:  #93c5fd;
-    --badge-city-bg:            #451a03;
-    --badge-city-text:          #fcd34d;
+    --badge-city-bg:            #431407;
+    --badge-city-text:          #fb923c;
+    --badge-other-india-bg:     #422006;
+    --badge-other-india-text:   #fde68a;
+    --badge-global-bg:          #1f2937;
+    --badge-global-text:        #9ca3af;
 
     --shadow-card: 0 1px 4px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
   }
@@ -269,6 +277,16 @@ a:hover { text-decoration: underline; color: var(--color-accent-hover); }
 .badge-city {
   background: var(--badge-city-bg);
   color: var(--badge-city-text);
+}
+
+.badge-other-india {
+  background: var(--badge-other-india-bg);
+  color: var(--badge-other-india-text);
+}
+
+.badge-global {
+  background: var(--badge-global-bg);
+  color: var(--badge-global-text);
 }
 
 .card-title {
