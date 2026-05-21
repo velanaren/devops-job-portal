@@ -8,6 +8,12 @@ Search : GET https://himalayas.app/jobs/api/search
 Auth: none required.
 Rate limit: data refreshes every 24 hours — one daily fetch is safe.
 Pagination: offset + limit parameters, max 20 results per request.
+
+Actual API field shapes (verified):
+  locationRestrictions: list[str]   e.g. ["United States"] or []
+  seniority:            list[str]   e.g. ["Senior"]
+  pubDate:              int         Unix timestamp in milliseconds
+  categories:           list[str]   e.g. ["Entry-Level-Python-Developer-AI-ML"]
 """
 
 import time
@@ -38,7 +44,7 @@ SEARCH_TERMS = [
     "site reliability",
 ]
 
-# Himalayas seniority field → DB experience_level mapping.
+# Himalayas seniority list item → DB experience_level mapping.
 _SENIORITY_MAP: dict[str, str] = {
     "Entry-level": "entry",
     "Mid-level":   "mid",
@@ -49,47 +55,44 @@ _SENIORITY_MAP: dict[str, str] = {
 }
 
 
-def _location_raw(restrictions: list[dict]) -> str:
+def _location_raw(restrictions: list) -> str:
     """
     Derive a location_raw string from the locationRestrictions array.
 
-    Himalayas locationRestrictions semantics:
-      []                    → work from anywhere worldwide
-      [{"alpha2": "IN"}]    → remote from India only
-      [{single country}]    → remote from that one country
-      [{country1}, ...]     → multiple country restriction
+    Himalayas locationRestrictions is a list of plain country name strings.
+
+      []                  → work from anywhere worldwide
+      ["India"]           → remote from India only
+      ["United States"]   → remote from that one country
+      ["US", "Canada"]    → multiple country restrictions
+      If India is in a multi-country list → still tag as India Remote
 
     Args:
-        restrictions: List of restriction dicts from the API response,
-                      e.g. [{"alpha2": "IN", "name": "India"}].
+        restrictions: List of country name strings from the API response,
+                      e.g. ["United States"] or [].
 
     Returns:
-        "Worldwide"        — empty restrictions (tagger → Remote Global).
-        "India Remote"     — single IN restriction (tagger → Remote India).
-        "{Country name}"   — single other country (tagger → Global).
-        "Multiple regions" — two or more restrictions (tagger → Global).
+        "Worldwide"        — empty list (tagger → Remote Global).
+        "India Remote"     — India present in list (tagger → Remote India).
+        "{Country name}"   — single non-India country (tagger → Global).
+        "Multiple regions" — multiple non-India countries (tagger → Global).
     """
     if not restrictions:
         return "Worldwide"
 
-    if len(restrictions) > 1:
-        return "Multiple regions"
-
-    entry = restrictions[0]
-    alpha2 = (entry.get("alpha2") or "").upper()
-
-    if alpha2 == "IN":
+    # India anywhere in the list → Remote India.
+    if any(r.lower() == "india" for r in restrictions):
         return "India Remote"
 
-    # Use the human-readable name if the API provides it; fall back to alpha2.
-    return entry.get("name") or alpha2
+    if len(restrictions) == 1:
+        return restrictions[0]
+
+    return "Multiple regions"
 
 
 def _parse_pubdate(pub_date, today: str) -> str:
     """
-    Convert pubDate to an ISO date string (YYYY-MM-DD).
-
-    Himalayas returns pubDate as a Unix timestamp in milliseconds.
+    Convert pubDate (Unix timestamp in milliseconds) to an ISO date string.
 
     Args:
         pub_date: Unix timestamp in ms (int/float), ISO string, or None.
@@ -102,8 +105,10 @@ def _parse_pubdate(pub_date, today: str) -> str:
         return today
     try:
         if isinstance(pub_date, (int, float)):
-            ts_seconds = pub_date / 1000
-            return datetime.fromtimestamp(ts_seconds, tz=timezone.utc).strftime("%Y-%m-%d")
+            # Values > 1e10 are milliseconds (divide by 1000);
+            # values <= 1e10 are already seconds (Himalayas actual format).
+            ts_seconds = pub_date / 1000 if pub_date > 1e10 else pub_date
+            return datetime.fromtimestamp(ts_seconds, tz=timezone.utc).date().isoformat()
         pub_str = str(pub_date)
         if len(pub_str) >= 10:
             return pub_str[:10]
@@ -130,14 +135,21 @@ def _normalise(item: dict, today: str) -> dict | None:
     if not matches_keyword(title, description):
         return None
 
+    # ISSUE 1 fix: locationRestrictions is list[str], not list[dict].
     restrictions = item.get("locationRestrictions") or []
     loc_raw = _location_raw(restrictions)
 
+    # ISSUE 4 fix: categories are hyphenated strings — clean before joining.
     categories = item.get("categories") or []
-    skills = ",".join(str(c) for c in categories if c)
+    skills = ", ".join(
+        c.replace("-", " ").title()
+        for c in categories
+        if c
+    )
 
-    # Map seniority → experience_level; fall back to title/description inference.
-    seniority = item.get("seniority") or ""
+    # ISSUE 2 fix: seniority is list[str], take first element if present.
+    seniority_list = item.get("seniority") or []
+    seniority = seniority_list[0] if seniority_list else ""
     experience = _SENIORITY_MAP.get(seniority) or detect_experience_level(title, description)
 
     return {
@@ -149,6 +161,7 @@ def _normalise(item: dict, today: str) -> dict | None:
         "source_name":      SOURCE_NAME,
         "source_url":       SOURCE_URL,
         "apply_url":        item.get("applicationLink") or SOURCE_URL,
+        # ISSUE 3 fix: pubDate is Unix ms timestamp — _parse_pubdate handles it.
         "posted_date":      _parse_pubdate(item.get("pubDate"), today),
         "fetched_date":     today,
         "skills":           skills,
