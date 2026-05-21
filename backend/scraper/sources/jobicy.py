@@ -16,8 +16,17 @@ HEADERS = {
     "Accept": "application/json",
 }
 
-# One call per tag — 4 calls total, well within the 1/hour compliance limit.
-SEARCH_TAGS = ["devops", "sre", "platform-engineer", "cloud-engineer"]
+# One call per tag — 8 calls total, well within the 1/hour compliance limit.
+SEARCH_TAGS = [
+    "devops",
+    "sre",
+    "platform-engineer",
+    "cloud-engineer",
+    "infrastructure",
+    "tech-support",
+    "it-support",
+    "mlops",
+]
 
 
 def _fetch_tag(tag: str) -> list[dict]:
@@ -95,7 +104,7 @@ def fetch_jobs() -> list[dict]:
     Fetch DevOps-relevant jobs from the Jobicy API using per-tag queries.
 
     Compliance:
-    - 4 HTTP calls per daily run — one per tag — well within 1/hour limit.
+    - 8 HTTP calls per daily run — one per tag — well within 1/hour limit.
     - User-Agent header on every request.
     - 1-second sleep between calls to be respectful.
     - Results must not be redistributed to other job platforms.

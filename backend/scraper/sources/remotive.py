@@ -16,8 +16,14 @@ HEADERS = {
     "Accept": "application/json",
 }
 
-# 4 keyword searches — stays within the 4 calls/day compliance limit.
-SEARCH_TERMS = ["devops", "sre", "platform engineer", "cloud engineer"]
+# 4 grouped keyword searches — exactly 4 calls/day, within Remotive's limit.
+# Terms are grouped by theme so each query covers multiple role categories.
+SEARCH_TERMS = [
+    "devops devsecops",
+    "sre site reliability platform engineer",
+    "cloud engineer infrastructure",
+    "tech support it support mlops",
+]
 
 
 def _fetch_page(search: str) -> list[dict]:

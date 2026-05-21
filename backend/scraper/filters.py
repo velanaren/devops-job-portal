@@ -2,51 +2,142 @@ import re
 
 # ---------------------------------------------------------------------------
 # Strict role keyword patterns — word-boundary matched, case-insensitive.
-# Generic terms (engineer, manager, lead, cloud, support alone) are excluded
-# to prevent false-positive matches.
+# Generic terms (engineer, cloud, support alone) are excluded to prevent
+# false-positive matches.
 # ---------------------------------------------------------------------------
 
 _STRICT_ROLE_PATTERNS: list[str] = [
+    # DevOps / GitOps
     r"\bdevops\b",
     r"\bdev ops\b",
     r"\bdevsecops\b",
-    r"\bmlops\b",
     r"\bgitops\b",
+    # SRE
     r"\bsre\b",
     r"\bsite reliability\b",
     r"\breliability engineer\b",
+    r"\bproduction engineer\b",
+    # Platform
     r"\bplatform engineer\b",
     r"\bplatform engineering\b",
-    r"\binfrastructure engineer\b",
-    r"\binfra engineer\b",
+    r"\bplatform operations\b",
+    # Cloud
     r"\bcloud engineer\b",
     r"\bcloud infrastructure\b",
     r"\bcloud operations\b",
     r"\bcloud platform\b",
+    r"\bcloud administrator\b",
+    # Infrastructure / Systems / Network
+    r"\binfrastructure engineer\b",
+    r"\binfra engineer\b",
+    r"\bsystems engineer\b",
+    r"\bsystems administrator\b",
+    r"\bsysadmin\b",
+    r"\bnetwork engineer\b",
+    r"\bnetwork operations\b",
+    # CI/CD / Release
+    r"\brelease engineer\b",
+    r"\bbuild engineer\b",
+    r"\bci/cd engineer\b",
+    # Observability
+    r"\bobservability engineer\b",
+    r"\bmonitoring engineer\b",
+    # MLOps / ML Infrastructure
+    r"\bmlops\b",
+    r"\bml engineer\b",
+    r"\bml infrastructure\b",
+    r"\bml platform\b",
+    # Application / Tech Support
     r"\bapplication support\b",
     r"\bapp support\b",
     r"\btech support\b",
     r"\btechnical support\b",
+    r"\bit support\b",
     r"\bl1 support\b",
     r"\bl2 support\b",
     r"\bl3 support\b",
-    r"\bsystems engineer\b",
+    r"\bservice desk\b",
+    r"\bhelpdesk\b",
+    r"\bhelp desk\b",
+    # IT Operations / DBA
+    r"\bit operations\b",
+    r"\bitops\b",
     r"\boperations engineer\b",
-    r"\brelease engineer\b",
-    r"\bbuild engineer\b",
+    r"\bdatabase administrator\b",
+    r"\bdba\b",
 ]
 
 _STRICT_KEYWORD_RE = re.compile("|".join(_STRICT_ROLE_PATTERNS), re.IGNORECASE)
 
 # Maps internal role_type value to the patterns that identify it.
+# Priority: first match wins — order matters.
 ROLE_TYPE_MAP: dict[str, list[str]] = {
-    "devops":      [r"\bdevops\b", r"\bdev ops\b", r"\bdevsecops\b", r"\bgitops\b", r"\bmlops\b"],
-    "sre":         [r"\bsre\b", r"\bsite reliability\b", r"\breliability engineer\b"],
-    "platform":    [r"\bplatform engineer\b", r"\bplatform engineering\b"],
-    "cloud":       [r"\bcloud engineer\b", r"\bcloud infrastructure\b", r"\bcloud operations\b", r"\bcloud platform\b"],
-    "appsupport":  [r"\bapplication support\b", r"\bapp support\b"],
-    "techsupport": [r"\btech support\b", r"\btechnical support\b", r"\bl1 support\b", r"\bl2 support\b", r"\bl3 support\b"],
-    "infra":       [r"\binfrastructure engineer\b", r"\binfra engineer\b", r"\bsystems engineer\b", r"\boperations engineer\b", r"\brelease engineer\b", r"\bbuild engineer\b"],
+    "devops": [
+        r"\bdevops\b",
+        r"\bdev ops\b",
+        r"\bdevsecops\b",
+        r"\bgitops\b",
+        r"\brelease engineer\b",
+        r"\bbuild engineer\b",
+        r"\bci/cd engineer\b",
+    ],
+    "sre": [
+        r"\bsre\b",
+        r"\bsite reliability\b",
+        r"\breliability engineer\b",
+        r"\bproduction engineer\b",
+    ],
+    "platform": [
+        r"\bplatform engineer\b",
+        r"\bplatform engineering\b",
+        r"\bplatform operations\b",
+    ],
+    "cloud": [
+        r"\bcloud engineer\b",
+        r"\bcloud infrastructure\b",
+        r"\bcloud operations\b",
+        r"\bcloud platform\b",
+        r"\bcloud administrator\b",
+    ],
+    "infra": [
+        r"\binfrastructure engineer\b",
+        r"\binfra engineer\b",
+        r"\bsystems engineer\b",
+        r"\bsystems administrator\b",
+        r"\bsysadmin\b",
+        r"\bnetwork engineer\b",
+        r"\bnetwork operations\b",
+        r"\bobservability engineer\b",
+        r"\bmonitoring engineer\b",
+    ],
+    "mlops": [
+        r"\bmlops\b",
+        r"\bml engineer\b",
+        r"\bml infrastructure\b",
+        r"\bml platform\b",
+    ],
+    "appsupport": [
+        r"\bapplication support\b",
+        r"\bapp support\b",
+    ],
+    "techsupport": [
+        r"\btech support\b",
+        r"\btechnical support\b",
+        r"\bit support\b",
+        r"\bl1 support\b",
+        r"\bl2 support\b",
+        r"\bl3 support\b",
+        r"\bservice desk\b",
+        r"\bhelpdesk\b",
+        r"\bhelp desk\b",
+    ],
+    "itops": [
+        r"\bit operations\b",
+        r"\bitops\b",
+        r"\boperations engineer\b",
+        r"\bdatabase administrator\b",
+        r"\bdba\b",
+    ],
 }
 
 _ROLE_TYPE_COMPILED: dict[str, re.Pattern] = {
@@ -90,7 +181,7 @@ def matches_keyword(title: str, description: str = "") -> bool:
     Title is the primary check — a word-boundary regex match against the
     curated role keyword list. Description is used as a fallback only (for
     ATS sources where job titles may be generic). Generic terms such as
-    'engineer', 'manager', 'lead', 'cloud', or 'support' alone do NOT match.
+    'engineer', 'cloud', or 'support' alone do NOT match.
 
     Args:
         title:       Job title string.
@@ -110,16 +201,17 @@ def detect_role_type(title: str) -> str:
     """
     Detect the primary role type from a job title using strict keyword patterns.
 
-    Checks role types in priority order: devops → sre → platform → cloud →
-    appsupport → techsupport → infra.
+    Checks role types in priority order:
+      devops → sre → platform → cloud → infra → mlops →
+      appsupport → techsupport → itops
 
     Args:
         title: Job title string.
 
     Returns:
-        One of: 'devops', 'sre', 'platform', 'cloud', 'appsupport',
-        'techsupport', 'infra'. Returns 'other' if no pattern matches —
-        the orchestrator should discard jobs with role_type 'other'.
+        One of: 'devops', 'sre', 'platform', 'cloud', 'infra', 'mlops',
+        'appsupport', 'techsupport', 'itops'. Returns 'other' if no pattern
+        matches — the orchestrator discards jobs with role_type 'other'.
     """
     for role_type, pattern in _ROLE_TYPE_COMPILED.items():
         if pattern.search(title):
