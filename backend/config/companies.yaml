@@ -129,6 +129,86 @@ companies:
     ats: greenhouse
     slug: chronosphere
 
+  - name: AlphaSense India
+    ats: greenhouse
+    slug: alphasenseindia
+
+  - name: Anaplan
+    ats: greenhouse
+    slug: anaplan
+
+  - name: Black Duck
+    ats: greenhouse
+    slug: blackduck
+
+  - name: Bottomline Technologies
+    ats: greenhouse
+    slug: bottomlinetechnologies
+
+  - name: Cognite
+    ats: greenhouse
+    slug: cognite
+
+  - name: CommerceIQ
+    ats: greenhouse
+    slug: commerceiq
+
+  - name: Definitive Healthcare India
+    ats: greenhouse
+    slug: definitivehcindia
+
+  - name: EarnIn
+    ats: greenhouse
+    slug: earnin
+
+  - name: Envoy Global
+    ats: greenhouse
+    slug: envoyglobalinc
+
+  - name: Ethos Life
+    ats: greenhouse
+    slug: ethoslife
+
+  - name: LivePerson
+    ats: greenhouse
+    slug: liveperson
+
+  - name: Nexla
+    ats: greenhouse
+    slug: nexla
+
+  - name: OneTrust
+    ats: greenhouse
+    slug: onetrust
+
+  - name: Phoenix Technologies AG
+    ats: greenhouse
+    slug: phoenixtechnologiesag
+
+  - name: RZR
+    ats: greenhouse
+    slug: rzr
+
+  - name: Sagent India
+    ats: greenhouse
+    slug: sagentindia
+
+  - name: SupplyHouse
+    ats: greenhouse
+    slug: supplyhouse
+
+  - name: WPP
+    ats: greenhouse
+    slug: wpp
+
+  - name: Zafin Labs Americas
+    ats: greenhouse
+    slug: zafinlabsamericasinc
+
+  - name: Zocdoc
+    ats: greenhouse
+    slug: zocdoc
+
   # --- Lever ---
   - name: Grafana Labs
     ats: lever
