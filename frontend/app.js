@@ -65,35 +65,36 @@ const locationBadge = (tag) => {
 };
 
 /**
- * Return the numeric priority rank for a location_tag.
+ * Return the numeric priority rank for a role_type.
  * Lower number = higher priority (shown first).
- * @param {string} tag
- * @returns {number} 1–7
+ * @param {string} role_type
+ * @returns {number} 1–10
  */
-const getPriorityScore = (tag) => {
-  const PRIORITY = {
-    "Remote Global": 1,
-    "Remote India":  2,
-    "Bengaluru":     3,
-    "Chennai":       4,
-    "Hyderabad":     5,
-    "Other India":   6,
-    "Global":        7,
+const getRolePriority = (role_type) => {
+  const ROLE_PRIORITY = {
+    devops:      1,
+    sre:         2,
+    platform:    3,
+    mlops:       4,
+    cloud:       5,
+    infra:       6,
+    appsupport:  7,
+    techsupport: 8,
+    itops:       9,
   };
-  return PRIORITY[tag] || 8;
+  return ROLE_PRIORITY[role_type] || 10;
 };
 
 /**
- * Sort a jobs array by location priority (ascending) then posted date (newest first).
+ * Sort a jobs array by role priority (ascending) then posted date (newest first).
  * Returns a new array — does not mutate the input.
  * @param {Array} jobs
  * @returns {Array}
  */
 const sortJobs = (jobs) => [...jobs].sort((a, b) => {
-  const pa = getPriorityScore(a.location_tag);
-  const pb = getPriorityScore(b.location_tag);
-  if (pa !== pb) return pa - pb;
-  // Secondary: newest posted_date first.
+  const roleDiff = getRolePriority(a.role_type) - getRolePriority(b.role_type);
+  if (roleDiff !== 0) return roleDiff;
+  // Secondary: newest posted_date first within each role group.
   const da = a.posted_date || a.fetched_date || "";
   const db = b.posted_date || b.fetched_date || "";
   return db.localeCompare(da);
@@ -245,7 +246,14 @@ const applyFilters = () => {
   cutoff.setUTCHours(0, 0, 0, 0);
 
   const filtered = allJobs.filter(job => {
-    if (role       && job.role_type        !== role)      return false;
+    if (role) {
+      // "support" is a merged option that matches both appsupport and techsupport.
+      if (role === "support") {
+        if (job.role_type !== "appsupport" && job.role_type !== "techsupport") return false;
+      } else {
+        if (job.role_type !== role) return false;
+      }
+    }
     if (location   && job.location_tag     !== location)  return false;
     if (type       && job.job_type         !== type)      return false;
     if (source     && job.source_name      !== source)    return false;
