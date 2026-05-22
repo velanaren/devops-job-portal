@@ -18,8 +18,8 @@ from config.settings import FRONTEND_ORIGIN
 from db.database import init_db, query_health, query_jobs
 
 app = FastAPI(
-    title="DevOps Job Portal API",
-    description="Read-only API serving cached DevOps job listings.",
+    title="InfraJobs API",
+    description="Read-only API serving cached DevOps, SRE, Platform Engineering, Cloud & Infrastructure job listings.",
     version="1.0.0",
 )
 
@@ -88,4 +88,4 @@ def get_health() -> HealthResponse:
 @app.get("/")
 def root() -> dict:
     """Redirect hint for the root path."""
-    return {"message": "DevOps Job Portal API. Use /api/jobs or /api/health."}
+    return {"message": "InfraJobs API. Use /api/jobs or /api/health."}

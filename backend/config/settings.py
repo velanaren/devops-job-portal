@@ -8,7 +8,7 @@ load_dotenv()
 # --- Application ---
 USER_AGENT: str = os.environ.get(
     "USER_AGENT",
-    "DevOpsJobsPortal/1.0 (personal project; contact: svelayuthamnaren@gmail.com)",
+    "InfraJobs/1.0 (personal project; contact: svelayuthamnaren@gmail.com)",
 )
 DB_PATH: str = os.environ.get("DB_PATH", "./data/jobs.db")
 LOG_RETENTION_DAYS: int = int(os.environ.get("LOG_RETENTION_DAYS", "30"))
