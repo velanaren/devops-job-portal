@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 
@@ -178,42 +178,37 @@ def count_jobs() -> int:
     return row[0]
 
 
-def delete_expired_jobs(ttl_days: int = 7) -> int:
+def clear_jobs() -> int:
     """
-    Delete all jobs whose fetched_date is older than ttl_days.
+    Delete all rows from the jobs table.
 
-    Args:
-        ttl_days: Jobs fetched more than this many days ago are removed (default 7).
+    Called at the start of each scraper run to ensure a clean slate — every
+    run produces a fresh, duplicate-free dataset.
 
     Returns:
         Number of rows deleted.
     """
-    cutoff = (date.today() - timedelta(days=ttl_days)).isoformat()
     with get_connection() as conn:
-        cursor = conn.execute(
-            "DELETE FROM jobs WHERE fetched_date < :cutoff", {"cutoff": cutoff}
-        )
+        cursor = conn.execute("DELETE FROM jobs")
         return cursor.rowcount
 
 
-def delete_source_jobs_before(source_name: str, today: str) -> int:
+def clear_today_logs(today: str) -> int:
     """
-    Delete all jobs for a given source that were fetched before today.
+    Delete all scrape_logs entries for today's date.
 
-    Called after a successful source fetch so that only today's fresh records
-    remain for that source (previous days' data is removed).
+    Called at the start of each scraper run so that if the scraper is re-run
+    on the same day, the log table does not accumulate duplicate run rows.
 
     Args:
-        source_name: The source identifier (e.g. 'RemoteOK').
-        today: ISO date string for today (YYYY-MM-DD).
+        today: ISO date string (YYYY-MM-DD) for the current run date.
 
     Returns:
         Number of rows deleted.
     """
     with get_connection() as conn:
         cursor = conn.execute(
-            "DELETE FROM jobs WHERE source_name = :source AND fetched_date < :today",
-            {"source": source_name, "today": today},
+            "DELETE FROM scrape_logs WHERE run_date = :today", {"today": today}
         )
         return cursor.rowcount
 

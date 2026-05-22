@@ -13,9 +13,9 @@ from datetime import date, datetime, timezone
 from typing import Callable
 
 from db.database import (
+    clear_jobs,
+    clear_today_logs,
     count_jobs,
-    delete_expired_jobs,
-    delete_source_jobs_before,
     init_db,
     insert_jobs,
     purge_old_logs,
@@ -51,11 +51,15 @@ def run() -> None:
     """
     Execute the full daily scrape across all configured sources.
 
+    Clears the entire jobs table and today's scrape logs before fetching,
+    ensuring every run produces a clean, duplicate-free dataset.
+
     For each source:
     - Calls the source's fetch_jobs() function.
     - Writes returned jobs to the database in a single transaction.
     - Logs success or failure to the scrape_logs table.
     - A single source failure never stops the remaining sources.
+      Failed sources contribute 0 jobs — old data is NOT restored.
 
     After all sources complete:
     - Purges scrape log entries older than LOG_RETENTION_DAYS.
@@ -69,25 +73,15 @@ def run() -> None:
 
     today = date.today().isoformat()
 
-    # --- TTL cleanup: remove jobs older than 7 days -------------------
-    jobs_before = count_jobs()
-    try:
-        from config.settings import JOB_TTL_DAYS
-    except ImportError:
-        JOB_TTL_DAYS = 14
+    # --- Full DB clear: fresh slate every run -------------------------
+    clear_jobs()
+    clear_today_logs(today)
+    print(f"[cleanup] Database cleared — fetching fresh jobs from all sources")
 
-    expired = delete_expired_jobs(JOB_TTL_DAYS)
-    jobs_after_ttl = count_jobs()
-    print(f"\n[cleanup] Jobs before TTL cleanup : {jobs_before}")
-    print(f"[cleanup] Expired jobs removed    : {expired}")
-    print(f"[cleanup] Jobs after TTL cleanup  : {jobs_after_ttl}")
-
-    # --- Per-source fetch + refresh -----------------------------------
+    # --- Per-source fetch ---------------------------------------------
     total_new_jobs = 0
-    source_results: dict[str, int | str] = {}
 
     for source_name, fetch_fn in SOURCES:
-        print(f"\n[{source_name}] Fetching...")
         start = time.monotonic()
 
         try:
@@ -98,18 +92,11 @@ def run() -> None:
             # these passed the keyword filter but didn't map to a known role.
             jobs = [j for j in jobs if j.get("role_type") != "other"]
 
-            # Replace previous days' data for this source with today's fresh batch.
-            # On failure we skip this step so stale-but-valid data is preserved.
-            stale_removed = delete_source_jobs_before(source_name, today)
-            if stale_removed:
-                print(f"[{source_name}] Removed {stale_removed} stale record(s) from previous runs.")
-
             if jobs:
                 insert_jobs(jobs)
 
             log_success(source_name, len(jobs), duration)
             total_new_jobs += len(jobs)
-            source_results[source_name] = len(jobs)
 
         except Exception as exc:
             duration = time.monotonic() - start
@@ -124,9 +111,8 @@ def run() -> None:
                 pass
 
             log_failure(source_name, str(exc), http_status, duration)
-            source_results[source_name] = f"FAILED: {exc}"
             # Do NOT raise — continue to next source.
-            # Previous data for this source is intentionally kept intact.
+            # Failed sources contribute 0 jobs — old data is NOT restored.
 
     # --- Purge stale log entries --------------------------------------
     try:
@@ -138,12 +124,7 @@ def run() -> None:
     # --- Summary ------------------------------------------------------
     print(f"\n{'='*60}")
     print(f"  Scraper run complete — {_now_utc()}")
-    print(f"  New jobs written   : {total_new_jobs}")
-    print(f"  Total jobs in DB   : {count_jobs()}")
-    print(f"  Sources            : {len(SOURCES)}")
-    for name, result in source_results.items():
-        status = f"{result} jobs" if isinstance(result, int) else result
-        print(f"    {name:<12} {status}")
+    print(f"  Total jobs written : {total_new_jobs}")
     print(f"{'='*60}\n")
 
 
