@@ -1,5 +1,5 @@
 # CLAUDE.md — Standing Instructions for Claude Code
-## DevOps Job Portal Project
+## InfraJobs Project
 
 This file is read by Claude Code at the start of every session.
 Follow every instruction in this file without exception unless explicitly told otherwise by the user.
@@ -233,7 +233,7 @@ Every outbound HTTP request must include this exact header:
 
 ```python
 headers = {
-    "User-Agent": "DevOpsJobsPortal/1.0 (personal project; contact: your@email.com)",
+    "User-Agent": "InfraJobs/1.0 (personal project; contact: your@email.com)",
     "Accept": "application/json"
 }
 ```
@@ -352,7 +352,7 @@ Required variables (defined in `.env`, documented in `.env.example`):
 
 ```bash
 # Application
-USER_AGENT=DevOpsJobsPortal/1.0 (personal project; contact: your@email.com)
+USER_AGENT=InfraJobs/1.0 (personal project; contact: your@email.com)
 DB_PATH=./data/jobs.db
 LOG_RETENTION_DAYS=30
 

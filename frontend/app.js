@@ -1,5 +1,5 @@
 /* ============================================================
-   DevOps Job Portal — app.js
+   InfraJobs — app.js
    Vanilla JS, ES6+. No frameworks, no build step.
    All filtering is client-side — no server round-trips.
    ============================================================ */

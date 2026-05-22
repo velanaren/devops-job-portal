@@ -1,5 +1,5 @@
 # Requirements Document
-## DevOps Job Portal — v1.0
+## InfraJobs — v1.0
 
 ---
 
@@ -73,7 +73,7 @@ A personal-use, single-page job aggregation portal that collects DevOps, SRE, Pl
 
 **COMP-01** — Every HTTP request from the scraper must include:
 ```
-User-Agent: DevOpsJobsPortal/1.0 (personal project; contact: your@email.com)
+User-Agent: InfraJobs/1.0 (personal project; contact: your@email.com)
 ```
 
 **COMP-02** — Scraper executes exactly once per day at 6AM IST. Page visits by the user must never trigger a scrape. The scraper and the frontend are fully decoupled — a page refresh serves cached data only.

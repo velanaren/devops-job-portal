@@ -1,6 +1,6 @@
-# DevOps Job Portal
+# InfraJobs
 
-A personal-use, single-page job aggregation portal for **DevOps, SRE, Platform Engineering, Cloud, Application Support, and Tech Support** roles. Jobs are pulled from 8 legal public sources once a day, cached in SQLite, and served through a FastAPI backend to a zero-framework HTML/CSS/JS frontend.
+A personal-use job aggregation portal for **DevOps, SRE, Platform Engineering, Cloud & Infrastructure** roles — India & Remote. Updated daily at 6AM IST. Jobs are pulled from 7 legal public sources once a day, cached in SQLite, and served through a FastAPI backend to a zero-framework HTML/CSS/JS frontend.
 
 Built as both a daily job-search tool and a live portfolio infrastructure project.
 
@@ -53,7 +53,7 @@ Built as both a daily job-search tool and a live portfolio infrastructure projec
 | Lever | ATS | 1 per company | Per job → jobs.lever.co | Public API |
 | Ashby | ATS | 1 per company | Per job → jobs.ashbyhq.com | Public API |
 
-Every HTTP request includes `User-Agent: DevOpsJobsPortal/1.0 (personal project; contact: your@email.com)`.
+Every HTTP request includes `User-Agent: InfraJobs/1.0 (personal project; contact: your@email.com)`.
 
 ---
 
@@ -204,7 +204,7 @@ All config lives in `.env` (never committed). Copy from `.env.example`:
 
 | Variable | Default | Description |
 |---|---|---|
-| `USER_AGENT` | `DevOpsJobsPortal/1.0 ...` | Sent on every outbound HTTP request |
+| `USER_AGENT` | `InfraJobs/1.0 ...` | Sent on every outbound HTTP request |
 | `DB_PATH` | `./data/jobs.db` | SQLite database file path |
 | `LOG_RETENTION_DAYS` | `30` | Days to keep scrape log entries |
 | `API_HOST` | `0.0.0.0` | FastAPI bind host |

@@ -1,12 +1,12 @@
 # Product Requirements Document (PRD)
-## DevOps Job Portal — v1.0
+## InfraJobs — v1.0
 
 ---
 
 ## 1. Product Overview
 
 ### 1.1 Product Name
-DevOps Job Portal (working title)
+InfraJobs
 
 ### 1.2 Product Summary
 A single-page, no-login job aggregation portal for DevOps, SRE, Platform, Cloud, Application Support, and Tech Support roles. Jobs are sourced legally from public APIs and ATS platforms, refreshed once daily at 6AM IST, and served from a cache. The user visits the portal to browse and filter fresh listings and clicks through to apply on the original source.
@@ -268,7 +268,7 @@ companies:
 #### 3.2.5 HTTP Request Requirements
 Every outbound request must include:
 ```
-User-Agent: DevOpsJobsPortal/1.0 (personal project; contact: your@email.com)
+User-Agent: InfraJobs/1.0 (personal project; contact: your@email.com)
 Accept: application/json
 ```
 
