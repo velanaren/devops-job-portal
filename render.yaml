@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: infrajobs
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: USER_AGENT
+        sync: false
+      - key: DB_PATH
+        value: /opt/render/project/src/data/jobs.db
+      - key: LOG_RETENTION_DAYS
+        value: 30
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: FRONTEND_ORIGIN
+        value: https://infrajobs.onrender.com
+      - key: SCRAPE_SCHEDULE
+        value: "0 1 * * *"
+    disk:
+      name: infrajobs-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+
+  - type: cron
+    name: infrajobs-scraper
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m scraper.main
+    schedule: "30 0 * * *"
+    envVars:
+      - key: USER_AGENT
+        sync: false
+      - key: DB_PATH
+        value: /opt/render/project/src/data/jobs.db
+      - key: LOG_RETENTION_DAYS
+        value: 30

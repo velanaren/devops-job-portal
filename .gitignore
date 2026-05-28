@@ -24,8 +24,8 @@ node_modules/
 # Docker
 .docker/
 
-# Data directory (SQLite DB lives here)
-data/
+# Database files in data/ directories are excluded by the *.db rule above.
+# backend/data/ itself is tracked so the directory exists in the repo (.gitkeep).
 
 # Python
 venv/
