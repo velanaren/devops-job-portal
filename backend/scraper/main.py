@@ -1,11 +1,11 @@
 """
 Scraper orchestrator — daily entry point.
 
-Run with:
+Run manually:
     python -m scraper.main
 
-Triggered by cron at 06:00 IST (00:30 UTC). Must never be called from a web
-request — the scraper and frontend are fully decoupled.
+Triggered automatically by APScheduler inside FastAPI at 00:30 UTC (6AM IST).
+Can also be triggered manually for testing.
 """
 
 import time
@@ -47,7 +47,7 @@ def _now_utc() -> str:
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
-def run() -> None:
+def run_scraper() -> None:
     """
     Execute the full daily scrape across all configured sources.
 
@@ -64,6 +64,9 @@ def run() -> None:
     After all sources complete:
     - Purges scrape log entries older than LOG_RETENTION_DAYS.
     - Prints a summary line with total jobs written.
+
+    Called by APScheduler at 00:30 UTC daily, or directly via
+    `python -m scraper.main` for manual runs.
     """
     print(f"\n{'='*60}")
     print(f"  Scraper run started — {_now_utc()}")
@@ -129,4 +132,4 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    run()
+    run_scraper()

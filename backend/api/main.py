@@ -9,11 +9,17 @@ Endpoints:
 No write endpoints. No scraper trigger endpoints.
 Static files (CSS, JS) are served via a StaticFiles mount at /.
 API routes must be defined BEFORE the mount so they are not intercepted.
+
+The daily scraper is scheduled via APScheduler at 00:30 UTC (6AM IST)
+and runs inside this process — no separate cron service is required.
 """
 
+import atexit
 import os
 from datetime import datetime, timezone
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -38,10 +44,36 @@ app.add_middleware(
 )
 
 
+def start_scheduler() -> None:
+    """
+    Schedule the daily scraper job using APScheduler.
+
+    Runs run_scraper() at 00:30 UTC every day (6AM IST).
+    The scheduler runs in a background thread alongside uvicorn.
+    Registered with atexit so it shuts down cleanly when the process exits.
+    """
+    try:
+        from scraper.main import run_scraper
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            run_scraper,
+            trigger=CronTrigger(hour=0, minute=30),
+            id="daily_scraper",
+            name="Daily job scraper",
+            replace_existing=True,
+        )
+        scheduler.start()
+        atexit.register(lambda: scheduler.shutdown())
+        print("[scheduler] Daily scraper scheduled at 00:30 UTC (6AM IST)")
+    except Exception as e:
+        print(f"[scheduler] Failed to start: {e}")
+
+
 @app.on_event("startup")
-def startup_event() -> None:
-    """Ensure the database and schema exist on first startup."""
+async def startup_event() -> None:
+    """Initialise the database and start the background scraper scheduler."""
     init_db()
+    start_scheduler()
 
 
 @app.get("/api/jobs", response_model=JobsResponse)
