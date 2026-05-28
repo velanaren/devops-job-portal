@@ -2,16 +2,22 @@
 FastAPI application — read-only job portal backend.
 
 Endpoints:
-    GET /api/jobs    — all jobs within the 14-day TTL window
-    GET /api/health  — last scraper run status per source
+    GET /          — serves frontend/index.html
+    GET /api/jobs  — all jobs within the 14-day TTL window
+    GET /api/health — last scraper run status per source
 
 No write endpoints. No scraper trigger endpoints.
+Static files (CSS, JS) are served via a StaticFiles mount at /.
+API routes must be defined BEFORE the mount so they are not intercepted.
 """
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from api.models import HealthResponse, Job, JobsResponse
 from config.settings import FRONTEND_ORIGIN
@@ -86,6 +92,26 @@ def get_health() -> HealthResponse:
 
 
 @app.get("/")
-def root() -> dict:
-    """Redirect hint for the root path."""
-    return {"message": "InfraJobs API. Use /api/jobs or /api/health."}
+def root() -> FileResponse:
+    """Serve the InfraJobs frontend at the root URL."""
+    frontend_path = os.path.join(
+        os.path.dirname(__file__),
+        "..", "..", "frontend", "index.html"
+    )
+    return FileResponse(frontend_path)
+
+
+# ---------------------------------------------------------------------------
+# Static file serving — must be mounted AFTER all API routes so that
+# /api/jobs and /api/health are not intercepted by the catch-all mount.
+# ---------------------------------------------------------------------------
+frontend_dir = os.path.join(
+    os.path.dirname(__file__),
+    "..", "..", "frontend"
+)
+if os.path.exists(frontend_dir):
+    app.mount(
+        "/",
+        StaticFiles(directory=frontend_dir, html=True),
+        name="frontend",
+    )
