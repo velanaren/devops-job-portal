@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Local dev: run `python3 serve.py` from the frontend/ directory -->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InfraJobs — DevOps, SRE &amp; Infra Jobs</title>
+  <meta name="description" content="DevOps, SRE, Platform Engineering, Cloud &amp; Infrastructure jobs — India &amp; Remote. Updated daily." />
+  <meta property="og:title" content="InfraJobs" />
+  <meta property="og:description" content="DevOps, SRE, Platform Engineering, Cloud &amp; Infrastructure jobs — India &amp; Remote. Updated daily." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="header-logo">⚙️</span>
+        <h1 class="header-title">InfraJobs</h1>
+      </div>
+      <p class="header-subtitle">
+        DevOps, SRE, Platform Engineering, Cloud &amp; Infrastructure jobs — India &amp; Remote
+      </p>
+      <p class="header-updated" id="last-updated">Loading...</p>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="filters-section" aria-label="Job filters">
+      <div class="filters-inner">
+
+        <div class="filter-row">
+          <div class="filter-group">
+            <label for="filter-role" class="filter-label">Role</label>
+            <select id="filter-role" class="filter-select">
+              <option value="">All Roles</option>
+              <option value="devops">DevOps / DevSecOps</option>
+              <option value="sre">SRE / Site Reliability</option>
+              <option value="platform">Platform Engineer</option>
+              <option value="mlops">MLOps</option>
+              <option value="cloud">Cloud Engineer</option>
+              <option value="infra">Infrastructure / Systems</option>
+              <option value="support">Application / Technical Support</option>
+              <option value="itops">IT Operations / DBA</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-location" class="filter-label">Location</label>
+            <select id="filter-location" class="filter-select">
+              <option value="">All Locations</option>
+              <option value="Remote Global">🌍 Remote Global</option>
+              <option value="Remote India">🇮🇳 Remote India</option>
+              <option value="Bengaluru">📍 Bengaluru</option>
+              <option value="Chennai">📍 Chennai</option>
+              <option value="Hyderabad">📍 Hyderabad</option>
+              <option value="Other India">📍 Other India</option>
+              <option value="Global">🌐 Global</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-type" class="filter-label">Job Type</label>
+            <select id="filter-type" class="filter-select">
+              <option value="">All Types</option>
+              <option value="remote">Remote</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="onsite">On-site</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-source" class="filter-label">Source</label>
+            <select id="filter-source" class="filter-select">
+              <option value="">All Sources</option>
+              <option value="RemoteOK">RemoteOK</option>
+              <option value="Remotive">Remotive</option>
+              <option value="Jobicy">Jobicy</option>
+              <option value="Himalayas">Himalayas</option>
+              <option value="Greenhouse">Greenhouse</option>
+              <option value="Lever">Lever</option>
+              <option value="Ashby">Ashby</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-experience" class="filter-label">Experience</label>
+            <select id="filter-experience" class="filter-select">
+              <option value="">All Levels</option>
+              <option value="entry">Entry</option>
+              <option value="mid">Mid</option>
+              <option value="senior">Senior</option>
+              <option value="staff">Staff / Lead</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-posted" class="filter-label">Posted Within</label>
+            <select id="filter-posted" class="filter-select">
+              <option value="14">Last 14 Days</option>
+              <option value="7">Last 7 Days</option>
+              <option value="3">Last 3 Days</option>
+              <option value="1">Last 24 Hours</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filters-meta">
+          <span class="job-count" id="job-count">0 jobs found</span>
+          <button class="btn-clear" id="btn-clear" hidden>Clear all filters</button>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="jobs-section" aria-label="Job listings">
+      <div class="jobs-inner">
+        <div id="jobs-container" class="jobs-grid">
+          <p class="loading-msg" id="loading-msg">Loading jobs...</p>
+        </div>
+        <p class="error-msg" id="error-msg" hidden></p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p class="footer-disclaimer">
+        Jobs aggregated from public third-party sources. This portal does not own
+        these listings. Always verify on the original source before applying.
+        Job listings may be up to 24 hours old due to source API caching requirements.
+      </p>
+      <p class="footer-sources">
+        Sources:
+        <a href="https://remoteok.com" target="_blank" rel="noopener noreferrer">RemoteOK</a> ·
+        <a href="https://remotive.com" target="_blank" rel="noopener noreferrer">Remotive</a> ·
+        <a href="https://jobicy.com" target="_blank" rel="noopener noreferrer">Jobicy</a> ·
+        <a href="https://himalayas.app" target="_blank" rel="noopener noreferrer">Himalayas</a> ·
+        <a href="https://boards.greenhouse.io" target="_blank" rel="noopener noreferrer">Greenhouse</a> ·
+        <a href="https://jobs.lever.co" target="_blank" rel="noopener noreferrer">Lever</a> ·
+        <a href="https://jobs.ashbyhq.com" target="_blank" rel="noopener noreferrer">Ashby</a>
+      </p>
+      <p class="footer-legal">
+        This is a personal, non-commercial project. Not affiliated with any listed
+        source or employer. Not for redistribution.
+      </p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,300 @@
+# Source B company list
+# Fields: name (display name), ats (greenhouse | lever | ashby), slug (ATS identifier)
+# To add a company: append an entry here — no code changes required.
+
+companies:
+
+  # --- Greenhouse ---
+  - name: Cloudflare
+    ats: greenhouse
+    slug: cloudflare
+
+  - name: Datadog
+    ats: greenhouse
+    slug: datadog
+
+  - name: PagerDuty
+    ats: greenhouse
+    slug: pagerduty
+
+  - name: Fastly
+    ats: greenhouse
+    slug: fastly
+
+  - name: Sentry
+    ats: greenhouse
+    slug: sentry
+
+  - name: Temporal Technologies
+    ats: greenhouse
+    slug: temporal
+
+  - name: Cockroach Labs
+    ats: greenhouse
+    slug: cockroachlabs
+
+  - name: MongoDB
+    ats: greenhouse
+    slug: mongodb
+
+  - name: Confluent
+    ats: greenhouse
+    slug: confluent
+
+  - name: Elastic
+    ats: greenhouse
+    slug: elastic
+
+  - name: New Relic
+    ats: greenhouse
+    slug: newrelic
+
+  - name: Sumo Logic
+    ats: greenhouse
+    slug: sumologic
+
+  - name: Figma
+    ats: greenhouse
+    slug: figma
+
+  - name: Notion
+    ats: greenhouse
+    slug: notion
+
+  - name: Vercel
+    ats: greenhouse
+    slug: vercel
+
+  - name: Netlify
+    ats: greenhouse
+    slug: netlify
+
+  - name: Stripe
+    ats: greenhouse
+    slug: stripe
+
+  - name: Twilio
+    ats: greenhouse
+    slug: twilio
+
+  - name: Okta
+    ats: greenhouse
+    slug: okta
+
+  - name: Splunk
+    ats: greenhouse
+    slug: splunk
+
+  - name: Dynatrace
+    ats: greenhouse
+    slug: dynatrace
+
+  - name: GitLab
+    ats: greenhouse
+    slug: gitlab
+
+  - name: Docker
+    ats: greenhouse
+    slug: docker
+
+  - name: Redis Labs
+    ats: greenhouse
+    slug: redislabs
+
+  - name: Couchbase
+    ats: greenhouse
+    slug: couchbase
+
+  - name: Lacework
+    ats: greenhouse
+    slug: lacework
+
+  - name: Wiz
+    ats: greenhouse
+    slug: wiz
+
+  - name: Aqua Security
+    ats: greenhouse
+    slug: aquasecurity
+
+  - name: Cribl
+    ats: greenhouse
+    slug: cribl
+
+  - name: Observe
+    ats: greenhouse
+    slug: observeinc
+
+  - name: Chronosphere
+    ats: greenhouse
+    slug: chronosphere
+
+  - name: AlphaSense India
+    ats: greenhouse
+    slug: alphasenseindia
+
+  - name: Anaplan
+    ats: greenhouse
+    slug: anaplan
+
+  - name: Black Duck
+    ats: greenhouse
+    slug: blackduck
+
+  - name: Bottomline Technologies
+    ats: greenhouse
+    slug: bottomlinetechnologies
+
+  - name: Cognite
+    ats: greenhouse
+    slug: cognite
+
+  - name: CommerceIQ
+    ats: greenhouse
+    slug: commerceiq
+
+  - name: Definitive Healthcare India
+    ats: greenhouse
+    slug: definitivehcindia
+
+  - name: EarnIn
+    ats: greenhouse
+    slug: earnin
+
+  - name: Envoy Global
+    ats: greenhouse
+    slug: envoyglobalinc
+
+  - name: Ethos Life
+    ats: greenhouse
+    slug: ethoslife
+
+  - name: LivePerson
+    ats: greenhouse
+    slug: liveperson
+
+  - name: Nexla
+    ats: greenhouse
+    slug: nexla
+
+  - name: OneTrust
+    ats: greenhouse
+    slug: onetrust
+
+  - name: Phoenix Technologies AG
+    ats: greenhouse
+    slug: phoenixtechnologiesag
+
+  - name: RZR
+    ats: greenhouse
+    slug: rzr
+
+  - name: Sagent India
+    ats: greenhouse
+    slug: sagentindia
+
+  - name: SupplyHouse
+    ats: greenhouse
+    slug: supplyhouse
+
+  - name: WPP
+    ats: greenhouse
+    slug: wpp
+
+  - name: Zafin Labs Americas
+    ats: greenhouse
+    slug: zafinlabsamericasinc
+
+  - name: Zocdoc
+    ats: greenhouse
+    slug: zocdoc
+
+  # --- Lever ---
+  - name: Grafana Labs
+    ats: lever
+    slug: grafanalabs
+
+  - name: Honeycomb
+    ats: lever
+    slug: honeycombio
+
+  - name: Pulumi
+    ats: lever
+    slug: pulumi
+
+  - name: Snyk
+    ats: lever
+    slug: snyk
+
+  - name: LaunchDarkly
+    ats: lever
+    slug: launchdarkly
+
+  - name: Harness
+    ats: lever
+    slug: harness
+
+  - name: Doppler
+    ats: lever
+    slug: doppler
+
+  - name: Appsmith
+    ats: lever
+    slug: appsmith
+
+  - name: Mattermost
+    ats: lever
+    slug: mattermost
+
+  - name: Teleport
+    ats: lever
+    slug: teleport
+
+  - name: Aiven
+    ats: lever
+    slug: aiven
+
+  - name: Turbot
+    ats: lever
+    slug: turbot
+
+  - name: Cortex
+    ats: lever
+    slug: cortex
+
+  # --- Ashby ---
+  - name: Tailscale
+    ats: ashby
+    slug: tailscale
+
+  - name: Buf
+    ats: ashby
+    slug: buf
+
+  - name: Dagger
+    ats: ashby
+    slug: dagger
+
+  - name: Tilt
+    ats: ashby
+    slug: tilt
+
+  - name: Humanitec
+    ats: ashby
+    slug: humanitec
+
+  - name: Port
+    ats: ashby
+    slug: getport
+
+  - name: Kosli
+    ats: ashby
+    slug: kosli
+
+  - name: Jetify
+    ats: ashby
+    slug: jetify
+
+  - name: Encore
+    ats: ashby
+    slug: encore

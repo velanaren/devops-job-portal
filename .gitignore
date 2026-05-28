@@ -23,3 +23,12 @@ node_modules/
 
 # Docker
 .docker/
+
+# Data directory (SQLite DB lives here)
+data/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.python-version
