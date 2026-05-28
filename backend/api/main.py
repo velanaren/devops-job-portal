@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -131,54 +131,6 @@ def root() -> FileResponse:
         "..", "..", "frontend", "index.html"
     )
     return FileResponse(frontend_path)
-
-
-@app.get("/api/admin/db-check")
-async def db_check():
-    """Temporary diagnostic endpoint — remove after debugging."""
-    import sqlite3
-    from config.settings import DB_PATH
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-
-    cur.execute("SELECT COUNT(*) FROM jobs")
-    total = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM jobs WHERE fetched_date >= date('now', '-14 days')")
-    within_14 = cur.fetchone()[0]
-
-    cur.execute("SELECT MIN(fetched_date), MAX(fetched_date) FROM jobs")
-    min_date, max_date = cur.fetchone()
-
-    cur.execute("SELECT source_name, COUNT(*) FROM jobs GROUP BY source_name")
-    by_source = dict(cur.fetchall())
-
-    cur.execute("""
-        SELECT source_name, COUNT(*)
-        FROM jobs
-        WHERE fetched_date >= date('now', '-14 days')
-        GROUP BY source_name
-    """)
-    by_source_filtered = dict(cur.fetchall())
-
-    conn.close()
-
-    return {
-        "total_in_db": total,
-        "within_14_days": within_14,
-        "min_fetched_date": min_date,
-        "max_fetched_date": max_date,
-        "all_jobs_by_source": by_source,
-        "filtered_jobs_by_source": by_source_filtered,
-    }
-
-
-@app.get("/api/admin/run-scraper")
-async def trigger_scraper(background_tasks: BackgroundTasks):
-    """Temporary endpoint — remove after first Railway deployment."""
-    from scraper.main import run_scraper
-    background_tasks.add_task(run_scraper)
-    return {"status": "started", "message": "Scraper running in background"}
 
 
 # ---------------------------------------------------------------------------
