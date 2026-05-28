@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -131,6 +131,14 @@ def root() -> FileResponse:
         "..", "..", "frontend", "index.html"
     )
     return FileResponse(frontend_path)
+
+
+@app.get("/api/admin/run-scraper")
+async def trigger_scraper(background_tasks: BackgroundTasks):
+    """Temporary endpoint — remove after first Railway deployment."""
+    from scraper.main import run_scraper
+    background_tasks.add_task(run_scraper)
+    return {"status": "started", "message": "Scraper running in background"}
 
 
 # ---------------------------------------------------------------------------
