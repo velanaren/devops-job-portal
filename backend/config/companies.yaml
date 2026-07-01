@@ -209,6 +209,234 @@ companies:
     ats: greenhouse
     slug: zocdoc
 
+  - name: 6sense
+    ats: greenhouse
+    slug: 6sense
+
+  - name: Adyen
+    ats: greenhouse
+    slug: adyen
+
+  - name: Aerospike
+    ats: greenhouse
+    slug: aerospike
+
+  - name: Agoda
+    ats: greenhouse
+    slug: agoda
+
+  - name: Amplitude
+    ats: greenhouse
+    slug: amplitude
+
+  - name: Appdirect
+    ats: greenhouse
+    slug: appdirect
+
+  - name: Appfire
+    ats: greenhouse
+    slug: appfire
+
+  - name: Appian
+    ats: greenhouse
+    slug: appian
+
+  - name: Armada
+    ats: greenhouse
+    slug: armada
+
+  - name: Armorcode
+    ats: greenhouse
+    slug: armorcode
+
+  - name: Atomicwork
+    ats: greenhouse
+    slug: atomicwork
+
+  - name: Augury
+    ats: greenhouse
+    slug: augury
+
+  - name: Aviatrix
+    ats: greenhouse
+    slug: aviatrix
+
+  - name: Backblaze
+    ats: greenhouse
+    slug: backblaze
+
+  - name: Bitgo
+    ats: greenhouse
+    slug: bitgo
+
+  - name: Bugcrowd
+    ats: greenhouse
+    slug: bugcrowd
+
+  - name: Celonis
+    ats: greenhouse
+    slug: celonis
+
+  - name: ClickHouse
+    ats: greenhouse
+    slug: clickhouse
+
+  - name: Contentstack
+    ats: greenhouse
+    slug: contentstack
+
+  - name: Couchbase
+    ats: greenhouse
+    slug: couchbaseinc
+
+  - name: Coursera
+    ats: greenhouse
+    slug: coursera
+
+  - name: Databricks
+    ats: greenhouse
+    slug: databricks
+
+  - name: Devrev
+    ats: greenhouse
+    slug: devrev
+
+  - name: Dialpad
+    ats: greenhouse
+    slug: dialpad
+
+  - name: Disco
+    ats: greenhouse
+    slug: disco
+
+  - name: Drivewealth
+    ats: greenhouse
+    slug: drivewealth
+
+  - name: Endorlabs
+    ats: greenhouse
+    slug: endorlabs
+
+  - name: Equalexperts
+    ats: greenhouse
+    slug: equalexperts
+
+  - name: Esri
+    ats: greenhouse
+    slug: esri
+
+  - name: Fivetran
+    ats: greenhouse
+    slug: fivetran
+
+  - name: Flexport
+    ats: greenhouse
+    slug: flexport
+
+  - name: Graphcore
+    ats: greenhouse
+    slug: graphcore
+
+  - name: Hightouch
+    ats: greenhouse
+    slug: hightouch
+
+  - name: Imply
+    ats: greenhouse
+    slug: imply
+
+  - name: JFrog
+    ats: greenhouse
+    slug: jfrog
+
+  - name: Karat
+    ats: greenhouse
+    slug: karat
+
+  - name: LaunchDarkly
+    ats: greenhouse
+    slug: launchdarkly
+
+  - name: Neo4j
+    ats: greenhouse
+    slug: neo4j
+
+  - name: Nirmata
+    ats: greenhouse
+    slug: nirmata
+
+  - name: Planet Labs
+    ats: greenhouse
+    slug: planetlabs
+
+  - name: Plume
+    ats: greenhouse
+    slug: plume
+
+  - name: Postman
+    ats: greenhouse
+    slug: postman
+
+  - name: Rubrik
+    ats: greenhouse
+    slug: rubrik
+
+  - name: Samsara
+    ats: greenhouse
+    slug: samsara
+
+  - name: Scale AI
+    ats: greenhouse
+    slug: scaleai
+
+  - name: Seekout
+    ats: greenhouse
+    slug: seekout
+
+  - name: SingleStore
+    ats: greenhouse
+    slug: singlestore
+
+  - name: Starburst
+    ats: greenhouse
+    slug: starburst
+
+  - name: TripActions
+    ats: greenhouse
+    slug: tripactions
+
+  - name: Turing
+    ats: greenhouse
+    slug: turing
+
+  - name: Verkada
+    ats: greenhouse
+    slug: verkada
+
+  - name: Via
+    ats: greenhouse
+    slug: via
+
+  - name: Wiz
+    ats: greenhouse
+    slug: wizinc
+
+  - name: Workato
+    ats: greenhouse
+    slug: workato
+
+  - name: YugabyteDB
+    ats: greenhouse
+    slug: yugabyte
+
+  - name: ZoomInfo
+    ats: greenhouse
+    slug: zoominfo
+
+  - name: Zuora
+    ats: greenhouse
+    slug: zuora
+
   # --- Lever ---
   - name: Grafana Labs
     ats: lever
@@ -262,6 +490,18 @@ companies:
     ats: lever
     slug: cortex
 
+  - name: AccelData
+    ats: lever
+    slug: acceldata
+
+  - name: Actian
+    ats: lever
+    slug: actian
+
+  - name: JumpCloud
+    ats: lever
+    slug: jumpcloud
+
   # --- Ashby ---
   - name: Tailscale
     ats: ashby
@@ -298,3 +538,83 @@ companies:
   - name: Encore
     ats: ashby
     slug: encore
+
+  - name: Airwallex
+    ats: ashby
+    slug: airwallex
+
+  - name: Anyscale
+    ats: ashby
+    slug: anyscale
+
+  - name: Atlan
+    ats: ashby
+    slug: atlan
+
+  - name: ClickHouse
+    ats: ashby
+    slug: clickhouse
+
+  - name: Confluent
+    ats: ashby
+    slug: confluent
+
+  - name: Cyberhaven
+    ats: ashby
+    slug: cyberhaven
+
+  - name: Gainsight
+    ats: ashby
+    slug: gainsight
+
+  - name: Infisical
+    ats: ashby
+    slug: infisical
+
+  - name: Kestra
+    ats: ashby
+    slug: kestra
+
+  - name: Kong
+    ats: ashby
+    slug: kong
+
+  - name: Litmus
+    ats: ashby
+    slug: litmus
+
+  - name: Notion
+    ats: ashby
+    slug: notion
+
+  - name: OpenAI
+    ats: ashby
+    slug: openai
+
+  - name: Oyster
+    ats: ashby
+    slug: oyster
+
+  - name: Plane
+    ats: ashby
+    slug: plane
+
+  - name: Redis
+    ats: ashby
+    slug: redis
+
+  - name: SigNoz
+    ats: ashby
+    slug: signoz
+
+  - name: Skyflow
+    ats: ashby
+    slug: skyflow
+
+  - name: Temporal
+    ats: ashby
+    slug: temporal
+
+  - name: Zapier
+    ats: ashby
+    slug: zapier
