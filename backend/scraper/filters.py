@@ -12,11 +12,14 @@ _STRICT_ROLE_PATTERNS: list[str] = [
     r"\bdev ops\b",
     r"\bdevsecops\b",
     r"\bgitops\b",
+    r"\baiops\b",
+    r"\bdataops\b",
     # SRE
     r"\bsre\b",
     r"\bsite reliability\b",
     r"\breliability engineer\b",
     r"\bproduction engineer\b",
+    r"\bdatabase reliability\b",
     # Platform
     r"\bplatform engineer\b",
     r"\bplatform engineering\b",
@@ -27,6 +30,11 @@ _STRICT_ROLE_PATTERNS: list[str] = [
     r"\bcloud operations\b",
     r"\bcloud platform\b",
     r"\bcloud administrator\b",
+    r"\bcloud architect\b",
+    r"\baws engineer\b",
+    r"\bazure engineer\b",
+    r"\bgcp engineer\b",
+    r"\bcloud devops\b",
     # Infrastructure / Systems / Network
     r"\binfrastructure engineer\b",
     r"\binfra engineer\b",
@@ -35,6 +43,11 @@ _STRICT_ROLE_PATTERNS: list[str] = [
     r"\bsysadmin\b",
     r"\bnetwork engineer\b",
     r"\bnetwork operations\b",
+    r"\bit infrastructure\b",
+    r"\blinux administrator\b",
+    r"\bnetwork administrator\b",
+    r"\blinux engineer\b",
+    r"\binfrastructure operations\b",
     # CI/CD / Release
     r"\brelease engineer\b",
     r"\bbuild engineer\b",
@@ -47,11 +60,27 @@ _STRICT_ROLE_PATTERNS: list[str] = [
     r"\bml engineer\b",
     r"\bml infrastructure\b",
     r"\bml platform\b",
-    # Application / Tech Support
+    r"\bai platform\b",
+    r"\bai infrastructure\b",
+    r"\bllmops\b",
+    # Application Support
     r"\bapplication support\b",
     r"\bapp support\b",
+    r"\bproduction support\b",
+    r"\bprod support\b",
+    r"\bplatform support\b",
+    r"\bsoftware support\b",
+    r"\bops support\b",
+    r"\boperations support\b",
+    # Technical Support
     r"\btech support\b",
     r"\btechnical support\b",
+    r"\bsupport engineer\b",
+    r"\bnoc engineer\b",
+    r"\bnoc analyst\b",
+    r"\btier 1 support\b",
+    r"\btier 2 support\b",
+    r"\btier 3 support\b",
     r"\bit support\b",
     r"\bl1 support\b",
     r"\bl2 support\b",
@@ -80,12 +109,15 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
         r"\brelease engineer\b",
         r"\bbuild engineer\b",
         r"\bci/cd engineer\b",
+        r"\baiops\b",
+        r"\bdataops\b",
     ],
     "sre": [
         r"\bsre\b",
         r"\bsite reliability\b",
         r"\breliability engineer\b",
         r"\bproduction engineer\b",
+        r"\bdatabase reliability\b",
     ],
     "platform": [
         r"\bplatform engineer\b",
@@ -98,6 +130,11 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
         r"\bcloud operations\b",
         r"\bcloud platform\b",
         r"\bcloud administrator\b",
+        r"\bcloud architect\b",
+        r"\baws engineer\b",
+        r"\bazure engineer\b",
+        r"\bgcp engineer\b",
+        r"\bcloud devops\b",
     ],
     "infra": [
         r"\binfrastructure engineer\b",
@@ -109,20 +146,40 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
         r"\bnetwork operations\b",
         r"\bobservability engineer\b",
         r"\bmonitoring engineer\b",
+        r"\bit infrastructure\b",
+        r"\blinux administrator\b",
+        r"\bnetwork administrator\b",
+        r"\blinux engineer\b",
+        r"\binfrastructure operations\b",
     ],
     "mlops": [
         r"\bmlops\b",
         r"\bml engineer\b",
         r"\bml infrastructure\b",
         r"\bml platform\b",
+        r"\bai platform\b",
+        r"\bai infrastructure\b",
+        r"\bllmops\b",
     ],
     "appsupport": [
         r"\bapplication support\b",
         r"\bapp support\b",
+        r"\bproduction support\b",
+        r"\bprod support\b",
+        r"\bplatform support\b",
+        r"\bsoftware support\b",
+        r"\bops support\b",
+        r"\boperations support\b",
     ],
     "techsupport": [
         r"\btech support\b",
         r"\btechnical support\b",
+        r"\bsupport engineer\b",
+        r"\bnoc engineer\b",
+        r"\bnoc analyst\b",
+        r"\btier 1 support\b",
+        r"\btier 2 support\b",
+        r"\btier 3 support\b",
         r"\bl1 support\b",
         r"\bl2 support\b",
         r"\bl3 support\b",
@@ -157,6 +214,7 @@ _SENIOR_LEVEL_PATTERNS: list[str] = [
     r"\bsenior\b",
     r"\bsr\.?\b",
     r"\biii\b",
+    r"\biv\b",
 ]
 _ENTRY_PATTERNS: list[str] = [
     r"\bjunior\b",
@@ -165,7 +223,12 @@ _ENTRY_PATTERNS: list[str] = [
     r"\bassociate\b",
     r"\bgraduate\b",
     r"\bintern\b",
-    r"\bi\b",
+]
+_MID_PATTERNS: list[str] = [
+    r"\bii\b",
+    r"\bmid[\s\-]level\b",
+    r"\bintermediate\b",
+    r"\bmidlevel\b",
 ]
 
 
@@ -238,4 +301,6 @@ def detect_experience_level(title: str, description: str = "") -> str:
         return "senior"
     if any(re.search(p, haystack) for p in _ENTRY_PATTERNS):
         return "entry"
+    if any(re.search(p, haystack) for p in _MID_PATTERNS):
+        return "mid"
     return "mid"

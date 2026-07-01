@@ -77,6 +77,36 @@ class TestMatchesKeyword:
     def test_matches_l2_support(self):
         assert matches_keyword("L2 Support Analyst") is True
 
+    def test_matches_aws_engineer(self):
+        assert matches_keyword("AWS Engineer") is True
+
+    def test_matches_azure_engineer(self):
+        assert matches_keyword("Azure Engineer") is True
+
+    def test_matches_gcp_engineer(self):
+        assert matches_keyword("GCP Engineer") is True
+
+    def test_matches_database_reliability(self):
+        assert matches_keyword("Database Reliability Engineer") is True
+
+    def test_matches_aiops(self):
+        assert matches_keyword("AIOps Specialist") is True
+
+    def test_matches_llmops(self):
+        assert matches_keyword("LLMOps Engineer") is True
+
+    def test_matches_it_infrastructure(self):
+        assert matches_keyword("IT Infrastructure Analyst") is True
+
+    def test_matches_production_support(self):
+        assert matches_keyword("Production Support Engineer") is True
+
+    def test_matches_support_engineer(self):
+        assert matches_keyword("Support Engineer") is True
+
+    def test_matches_noc_engineer(self):
+        assert matches_keyword("NOC Engineer") is True
+
     def test_matches_ci_cd_engineer(self):
         assert matches_keyword("CI/CD Engineer") is True
 
@@ -139,6 +169,12 @@ class TestDetectRoleType:
     def test_devops_ci_cd_engineer(self):
         assert detect_role_type("CI/CD Engineer") == "devops"
 
+    def test_devops_aiops(self):
+        assert detect_role_type("AIOps Analyst") == "devops"
+
+    def test_devops_dataops(self):
+        assert detect_role_type("DataOps Engineer") == "devops"
+
     # --- SRE ---
     def test_sre(self):
         assert detect_role_type("Senior SRE") == "sre"
@@ -148,6 +184,9 @@ class TestDetectRoleType:
 
     def test_sre_production_engineer(self):
         assert detect_role_type("Production Engineer") == "sre"
+
+    def test_sre_database_reliability(self):
+        assert detect_role_type("Database Reliability Engineer") == "sre"
 
     # --- Platform ---
     def test_platform(self):
@@ -168,6 +207,15 @@ class TestDetectRoleType:
 
     def test_cloud_administrator(self):
         assert detect_role_type("Cloud Administrator") == "cloud"
+
+    def test_cloud_aws_engineer(self):
+        assert detect_role_type("AWS Engineer") == "cloud"
+
+    def test_cloud_azure_engineer(self):
+        assert detect_role_type("Azure Engineer") == "cloud"
+
+    def test_cloud_architect(self):
+        assert detect_role_type("Cloud Architect") == "cloud"
 
     # --- Infra ---
     def test_infra_infrastructure_engineer(self):
@@ -191,6 +239,15 @@ class TestDetectRoleType:
     def test_infra_monitoring_engineer(self):
         assert detect_role_type("Monitoring Engineer") == "infra"
 
+    def test_infra_it_infrastructure(self):
+        assert detect_role_type("IT Infrastructure Analyst") == "infra"
+
+    def test_infra_linux_administrator(self):
+        assert detect_role_type("Linux Administrator") == "infra"
+
+    def test_infra_linux_engineer(self):
+        assert detect_role_type("Linux Engineer") == "infra"
+
     # --- MLOps ---
     def test_mlops(self):
         assert detect_role_type("MLOps Engineer") == "mlops"
@@ -210,12 +267,29 @@ class TestDetectRoleType:
     def test_mlops_pure_title(self):
         assert detect_role_type("MLOps Architect") == "mlops"
 
+    def test_mlops_llmops(self):
+        assert detect_role_type("LLMOps Engineer") == "mlops"
+
+    def test_mlops_ai_platform(self):
+        # "AI Platform Engineer" contains "platform engineer" → platform wins (higher priority)
+        assert detect_role_type("AI Platform Engineer") == "platform"
+
+    def test_mlops_ai_platform_pure(self):
+        # "AI Platform" alone (no "engineer") → mlops
+        assert detect_role_type("AI Platform Architect") == "mlops"
+
     # --- Application Support ---
     def test_appsupport(self):
         assert detect_role_type("Application Support Analyst") == "appsupport"
 
     def test_appsupport_short(self):
         assert detect_role_type("App Support Engineer") == "appsupport"
+
+    def test_appsupport_production_support(self):
+        assert detect_role_type("Production Support Engineer") == "appsupport"
+
+    def test_appsupport_operations_support(self):
+        assert detect_role_type("Operations Support Analyst") == "appsupport"
 
     # --- Tech Support ---
     def test_techsupport(self):
@@ -229,6 +303,21 @@ class TestDetectRoleType:
 
     def test_techsupport_l3(self):
         assert detect_role_type("L3 Support Analyst") == "techsupport"
+
+    def test_techsupport_support_engineer(self):
+        assert detect_role_type("Support Engineer") == "techsupport"
+
+    def test_techsupport_noc_engineer(self):
+        assert detect_role_type("NOC Engineer") == "techsupport"
+
+    def test_techsupport_noc_analyst(self):
+        assert detect_role_type("NOC Analyst") == "techsupport"
+
+    def test_techsupport_tier1(self):
+        assert detect_role_type("Tier 1 Support Specialist") == "techsupport"
+
+    def test_techsupport_tier2(self):
+        assert detect_role_type("Tier 2 Support") == "techsupport"
 
     def test_techsupport_service_desk_moved_to_itops(self):
         # service desk / helpdesk / it support moved to itops role type
@@ -310,3 +399,19 @@ class TestDetectExperienceLevel:
 
     def test_senior_in_description(self):
         assert detect_experience_level("Cloud Engineer", "senior role with 5+ years") == "senior"
+
+    def test_senior_engineer_iii(self):
+        # Roman numeral III indicates senior level, not entry
+        assert detect_experience_level("Infrastructure Engineer III") == "senior"
+
+    def test_senior_engineer_iv(self):
+        assert detect_experience_level("SRE IV") == "senior"
+
+    def test_mid_engineer_ii(self):
+        assert detect_experience_level("DevOps Engineer II") == "mid"
+
+    def test_mid_midlevel(self):
+        assert detect_experience_level("Mid-Level Platform Engineer") == "mid"
+
+    def test_mid_intermediate(self):
+        assert detect_experience_level("Intermediate Cloud Engineer") == "mid"
