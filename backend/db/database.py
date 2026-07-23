@@ -178,6 +178,73 @@ def count_jobs() -> int:
     return row[0]
 
 
+def clear_staging() -> None:
+    """Clear the staging table before a new scraper run."""
+    with get_connection() as conn:
+        conn.execute("DELETE FROM jobs_staging")
+
+
+def insert_jobs_staging(jobs: list[dict]) -> None:
+    """Insert jobs into staging table (not live jobs table)."""
+    sql = """
+        INSERT INTO jobs_staging (
+            title, company, location_raw, location_tag,
+            job_type, source_name, source_url, apply_url,
+            posted_date, fetched_date, skills,
+            experience_level, role_type
+        ) VALUES (
+            :title, :company, :location_raw, :location_tag,
+            :job_type, :source_name, :source_url, :apply_url,
+            :posted_date, :fetched_date, :skills,
+            :experience_level, :role_type
+        )
+    """
+    with get_connection() as conn:
+        conn.executemany(sql, jobs)
+
+
+def swap_staging_to_live() -> int:
+    """
+    Atomically swap staging table to live jobs table.
+
+    Uses an EXCLUSIVE transaction so no reader sees a partial state.
+    The portal is job-free for only the duration of this single transaction
+    (typically <1ms), not for the entire scraper run.
+
+    If this function raises, the live table is untouched — the portal
+    continues to serve the previous day's data.
+
+    Returns:
+        Number of jobs now in the live jobs table.
+    """
+    db_path = _get_db_path()
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    # isolation_level=None → autocommit mode so we can issue BEGIN EXCLUSIVE.
+    conn = sqlite3.connect(db_path, isolation_level=None)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("BEGIN EXCLUSIVE")
+        conn.execute("DELETE FROM jobs")
+        conn.execute(
+            "INSERT INTO jobs (title, company, location_raw, location_tag, "
+            "job_type, source_name, source_url, apply_url, posted_date, "
+            "fetched_date, skills, experience_level, role_type, created_at) "
+            "SELECT title, company, location_raw, location_tag, "
+            "job_type, source_name, source_url, apply_url, posted_date, "
+            "fetched_date, skills, experience_level, role_type, created_at "
+            "FROM jobs_staging"
+        )
+        conn.execute("DELETE FROM jobs_staging")
+        row = conn.execute("SELECT COUNT(*) FROM jobs").fetchone()
+        conn.execute("COMMIT")
+        return row[0]
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.close()
+
+
 def clear_jobs() -> int:
     """
     Delete all rows from the jobs table.

@@ -16,6 +16,24 @@ CREATE TABLE IF NOT EXISTS jobs (
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS jobs_staging (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    title            TEXT    NOT NULL,
+    company          TEXT    NOT NULL,
+    location_raw     TEXT,
+    location_tag     TEXT,
+    job_type         TEXT,
+    source_name      TEXT    NOT NULL,
+    source_url       TEXT,
+    apply_url        TEXT,
+    posted_date      DATE,
+    fetched_date     DATE    NOT NULL,
+    skills           TEXT,
+    experience_level TEXT,
+    role_type        TEXT,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS scrape_logs (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     run_date         DATE    NOT NULL,

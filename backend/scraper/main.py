@@ -6,6 +6,14 @@ Run manually:
 
 Triggered automatically by APScheduler inside FastAPI at 00:30 UTC (6AM IST).
 Can also be triggered manually for testing.
+
+Blue/green staging swap:
+  Jobs are written to jobs_staging during the entire fetch phase.
+  The live jobs table is untouched until all sources complete.
+  swap_staging_to_live() atomically replaces the live table in <1ms,
+  so the portal never shows 0 jobs during a scraper run.
+  If the scraper crashes mid-run, staging is discarded and the portal
+  continues serving the previous day's data.
 """
 
 import time
@@ -13,14 +21,14 @@ from datetime import date, datetime, timezone
 from typing import Callable
 
 from db.database import (
-    clear_jobs,
+    clear_staging,
     clear_today_logs,
-    count_jobs,
     init_db,
-    insert_jobs,
+    insert_jobs_staging,
+    insert_scrape_log,
     purge_old_logs,
+    swap_staging_to_live,
 )
-from scraper.logger import log_failure, log_success
 from scraper.sources.ats.ashby import fetch_jobs as fetch_ashby
 from scraper.sources.ats.greenhouse import fetch_jobs as fetch_greenhouse
 from scraper.sources.ats.lever import fetch_jobs as fetch_lever
@@ -51,19 +59,23 @@ def run_scraper() -> None:
     """
     Execute the full daily scrape across all configured sources.
 
-    Clears the entire jobs table and today's scrape logs before fetching,
-    ensuring every run produces a clean, duplicate-free dataset.
+    Writes all fetched jobs to jobs_staging during the fetch phase,
+    leaving the live jobs table (and the portal) untouched.
+    After all sources complete, swap_staging_to_live() atomically
+    promotes staging to live in a single exclusive SQLite transaction.
+    scrape_logs are written only after a successful swap.
 
     For each source:
     - Calls the source's fetch_jobs() function.
-    - Writes returned jobs to the database in a single transaction.
-    - Logs success or failure to the scrape_logs table.
+    - Writes returned jobs to the staging table.
+    - Logs success or failure to pending_logs (in memory).
     - A single source failure never stops the remaining sources.
-      Failed sources contribute 0 jobs — old data is NOT restored.
+      Failed sources contribute 0 staging jobs — the live table is safe.
 
     After all sources complete:
+    - Swaps staging to live atomically.
+    - Writes all collected log entries to scrape_logs.
     - Purges scrape log entries older than LOG_RETENTION_DAYS.
-    - Prints a summary line with total jobs written.
 
     Called by APScheduler at 00:30 UTC daily, or directly via
     `python -m scraper.main` for manual runs.
@@ -76,13 +88,13 @@ def run_scraper() -> None:
 
     today = date.today().isoformat()
 
-    # --- Full DB clear: fresh slate every run -------------------------
-    clear_jobs()
-    clear_today_logs(today)
-    print(f"[cleanup] Database cleared — fetching fresh jobs from all sources")
+    # --- Clear staging: live table stays untouched throughout ---------
+    clear_staging()
+    print(f"[staging] Staging table cleared — fetching fresh data")
 
-    # --- Per-source fetch ---------------------------------------------
-    total_new_jobs = 0
+    # --- Per-source fetch into staging --------------------------------
+    total_staging_jobs = 0
+    pending_logs: list[dict] = []
 
     for source_name, fetch_fn in SOURCES:
         start = time.monotonic()
@@ -91,21 +103,28 @@ def run_scraper() -> None:
             jobs = fetch_fn()
             duration = time.monotonic() - start
 
-            # Discard jobs where role classification returned 'other' —
-            # these passed the keyword filter but didn't map to a known role.
+            # Discard jobs where role classification returned 'other'.
             jobs = [j for j in jobs if j.get("role_type") != "other"]
 
             if jobs:
-                insert_jobs(jobs)
+                insert_jobs_staging(jobs)
 
-            log_success(source_name, len(jobs), duration)
-            total_new_jobs += len(jobs)
+            total_staging_jobs += len(jobs)
+            print(f"[{source_name:<12}] SUCCESS — {len(jobs)} jobs ({duration:.1f}s)")
+            pending_logs.append({
+                "run_date": today,
+                "source_name": source_name,
+                "status": "success",
+                "jobs_fetched": len(jobs),
+                "error_message": None,
+                "http_status": None,
+                "duration_seconds": round(duration, 2),
+            })
 
         except Exception as exc:
             duration = time.monotonic() - start
             http_status = None
 
-            # Extract HTTP status code if available.
             try:
                 import requests
                 if isinstance(exc, requests.HTTPError) and exc.response is not None:
@@ -113,9 +132,29 @@ def run_scraper() -> None:
             except ImportError:
                 pass
 
-            log_failure(source_name, str(exc), http_status, duration)
+            print(f"[{source_name:<12}] FAILURE — {exc}")
+            pending_logs.append({
+                "run_date": today,
+                "source_name": source_name,
+                "status": "failure",
+                "jobs_fetched": 0,
+                "error_message": str(exc),
+                "http_status": http_status,
+                "duration_seconds": round(duration, 2),
+            })
             # Do NOT raise — continue to next source.
-            # Failed sources contribute 0 jobs — old data is NOT restored.
+            # Staging has partial data — live table remains safe.
+
+    # --- Atomic swap: staging → live ----------------------------------
+    print(f"\n{'='*60}")
+    print(f"[staging] All sources complete — swapping to live")
+    live_count = swap_staging_to_live()
+    print(f"[staging] Live portal now has {live_count} jobs")
+
+    # --- Write scrape logs only after successful swap -----------------
+    clear_today_logs(today)
+    for log in pending_logs:
+        insert_scrape_log(log)
 
     # --- Purge stale log entries --------------------------------------
     try:
@@ -125,9 +164,7 @@ def run_scraper() -> None:
         print(f"[purge] WARNING — could not purge old logs: {exc}")
 
     # --- Summary ------------------------------------------------------
-    print(f"\n{'='*60}")
     print(f"  Scraper run complete — {_now_utc()}")
-    print(f"  Total jobs written : {total_new_jobs}")
     print(f"{'='*60}\n")
 
 
