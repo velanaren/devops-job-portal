@@ -10,7 +10,7 @@ from scraper.sources.ats import load_companies, strip_html
 from scraper.tagger import tag_location
 
 SOURCE_NAME = "Ashby"
-API_BASE = "https://jobs.ashbyhq.com/api/non-authenticated-open-job-listings"
+API_BASE = "https://api.ashbyhq.com/posting-api/job-board"
 MAX_WORKERS = 10
 SLEEP_BETWEEN = 0.2
 
@@ -31,10 +31,12 @@ def _fetch_company_jobs(slug: str) -> list[dict]:
         Raw list of job dicts from the Ashby API.
     """
     url = f"{API_BASE}/{slug}"
-    response = requests.get(url, headers=HEADERS, timeout=30)
+    params = {"includeCompensation": "true"}
+    response = requests.get(url, headers=HEADERS, params=params, timeout=30)
     response.raise_for_status()
     data = response.json()
-    return data.get("jobs", [])
+    # API returns "jobPostings" on some versions, "jobs" on others — handle both.
+    return data.get("jobPostings", data.get("jobs", []))
 
 
 def _normalise(item: dict, company_name: str, slug: str, today: str) -> dict | None:
@@ -50,17 +52,20 @@ def _normalise(item: dict, company_name: str, slug: str, today: str) -> dict | N
         return None
 
     is_remote = item.get("isRemote", False)
-    location_raw = item.get("location") or item.get("locationName") or ""
+    # New API returns location as a plain string; fall back to locationName for older shape.
+    location_raw = item.get("locationName") or item.get("location") or ""
+    if isinstance(location_raw, dict):
+        location_raw = location_raw.get("locationStr", "")
     if is_remote and not location_raw:
         location_raw = "Remote"
 
     published_at = item.get("publishedAt") or ""
     posted_date = published_at[:10] if len(published_at) >= 10 else today
 
-    department = item.get("department") or item.get("departmentName") or ""
+    department = item.get("departmentName") or item.get("department") or ""
 
     source_url = f"https://jobs.ashbyhq.com/{slug}"
-    apply_url = item.get("jobUrl") or item.get("applicationFormUrl") or source_url
+    apply_url = item.get("applyUrl") or item.get("jobUrl") or source_url
 
     return {
         "title": title,
