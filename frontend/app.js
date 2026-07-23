@@ -65,7 +65,7 @@ const locationBadge = (tag) => {
     case "Mumbai":        return { cls: "badge-city",          label: "📍 Mumbai" };
     case "Delhi NCR":     return { cls: "badge-city",          label: "📍 Delhi NCR" };
     case "Other India":   return { cls: "badge-other-india",   label: "🇮🇳 Other India" };
-    default:              return { cls: "badge-other-india",   label: "📍 Other" };
+    default:              return { cls: "badge-global",        label: tag || "Unknown" };
   }
 };
 
