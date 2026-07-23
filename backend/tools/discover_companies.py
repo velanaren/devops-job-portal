@@ -3,16 +3,20 @@ One-time discovery script — find companies with relevant DevOps/SRE/Infra jobs
 
 Reads large ATS slug lists, tests each slug against the respective API,
 and keeps only companies that have at least one job matching our role keywords
-AND located in India or truly global-remote.
+AND located in India or accessible remotely.
 
 Usage:
     cd backend
     python3 -m tools.discover_companies
 
+NOTE: Delete discover_checkpoint.json before each fresh run.
+
 Output files (all gitignored — manual review before merging):
     backend/tools/discovered_companies.yaml  — companies to review
     backend/tools/discover_summary.txt       — run statistics
     backend/tools/discover_checkpoint.json   — checkpoint for resume
+                                               (also stores found companies
+                                                to survive interruption)
 
 Input files:
     backend/tools/input/greenhouse_slugs.txt
@@ -21,7 +25,6 @@ Input files:
 """
 
 import json
-import os
 import re
 import sys
 import time
@@ -59,34 +62,34 @@ REQUEST_TIMEOUT = 15
 SLEEP_BETWEEN = 1.0
 CHECKPOINT_EVERY = 50
 
-# Location tags that pass the filter.
-KEEP_TAGS: frozenset[str] = frozenset({
-    "Remote Global",
-    "Remote India",
-    "Bengaluru",
-    "Chennai",
-    "Hyderabad",
-    "Other India",
-})
-
 # ---------------------------------------------------------------------------
 # Role keyword matching (mirrors scraper/filters.py)
 # ---------------------------------------------------------------------------
 
 _STRICT_ROLE_PATTERNS: list[str] = [
     r"\bdevops\b", r"\bdev ops\b", r"\bdevsecops\b", r"\bgitops\b",
-    r"\bsre\b", r"\bsite reliability\b", r"\breliability engineer\b", r"\bproduction engineer\b",
+    r"\baiops\b", r"\bdataops\b",
+    r"\bsre\b", r"\bsite reliability\b", r"\breliability engineer\b",
+    r"\bproduction engineer\b", r"\bdatabase reliability\b",
     r"\bplatform engineer\b", r"\bplatform engineering\b", r"\bplatform operations\b",
     r"\bcloud engineer\b", r"\bcloud infrastructure\b", r"\bcloud operations\b",
-    r"\bcloud platform\b", r"\bcloud administrator\b",
+    r"\bcloud platform\b", r"\bcloud administrator\b", r"\bcloud architect\b",
+    r"\baws engineer\b", r"\bazure engineer\b", r"\bgcp engineer\b", r"\bcloud devops\b",
     r"\binfrastructure engineer\b", r"\binfra engineer\b",
     r"\bsystems engineer\b", r"\bsystems administrator\b", r"\bsysadmin\b",
     r"\bnetwork engineer\b", r"\bnetwork operations\b",
+    r"\bit infrastructure\b", r"\blinux administrator\b", r"\bnetwork administrator\b",
+    r"\blinux engineer\b", r"\binfrastructure operations\b",
     r"\brelease engineer\b", r"\bbuild engineer\b", r"\bci/cd engineer\b",
     r"\bobservability engineer\b", r"\bmonitoring engineer\b",
     r"\bmlops\b", r"\bml engineer\b", r"\bml infrastructure\b", r"\bml platform\b",
+    r"\bai platform\b", r"\bai infrastructure\b", r"\bllmops\b",
     r"\bapplication support\b", r"\bapp support\b",
+    r"\bproduction support\b", r"\bprod support\b", r"\bplatform support\b",
+    r"\bsoftware support\b", r"\bops support\b", r"\boperations support\b",
     r"\btech support\b", r"\btechnical support\b",
+    r"\bsupport engineer\b", r"\bnoc engineer\b", r"\bnoc analyst\b",
+    r"\btier 1 support\b", r"\btier 2 support\b", r"\btier 3 support\b",
     r"\bit support\b", r"\bl1 support\b", r"\bl2 support\b", r"\bl3 support\b",
     r"\bservice desk\b", r"\bhelpdesk\b", r"\bhelp desk\b",
     r"\bit operations\b", r"\bitops\b", r"\boperations engineer\b",
@@ -111,81 +114,74 @@ def _matches_keyword(title: str, description: str = "") -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Location tagging (mirrors scraper/tagger.py)
+# Inclusive location detection for discovery
+#
+# Deliberately broad: "Remote" alone passes, empty location passes.
+# The production tagger handles display-layer filtering.
 # ---------------------------------------------------------------------------
 
-_REMOTE_GLOBAL_KEYWORDS: tuple[str, ...] = (
-    "anywhere", "worldwide", "work from anywhere", "no location",
-    "fully remote", "global remote", "remote - worldwide", "wfa",
-    "location independent",
-)
+_INDIA_TERMS: list[str] = [
+    "india", "bengaluru", "bangalore", "chennai",
+    "hyderabad", "mumbai", "pune", "delhi", "noida",
+    "gurugram", "gurgaon", "kolkata", "kochi",
+    "coimbatore", "trivandrum", "ahmedabad",
+]
 
-_COUNTRY_RESTRICTION_RE = re.compile(
-    r"\b(usa?|united states|us only|canada|uk|united kingdom|europe|emea|latam"
-    r"|australia|new zealand|germany|france|netherlands|sweden|denmark|norway"
-    r"|finland|spain|italy|portugal|poland|brazil|colombia|argentina|mexico"
-    r"|singapore|japan|china|korea|india)\b",
-    re.IGNORECASE,
-)
-
-_REMOTE_INDIA_INDICATORS: tuple[str, ...] = (
-    "remote", "work from home", "wfh", "pan india", "anywhere in india",
-)
-
-_INDIA_CITY_EXCEPTIONS: tuple[str, ...] = (
-    "bengaluru", "bangalore", "chennai", "hyderabad",
-)
-
-_OTHER_INDIA_CITIES: tuple[str, ...] = (
-    "pune", "mumbai", "delhi", "noida", "gurugram", "gurgaon", "kolkata",
-    "ahmedabad", "jaipur", "kochi", "coimbatore", "thiruvananthapuram",
-    "trivandrum", "indore", "nagpur", "chandigarh", "lucknow", "bhopal",
-    "surat", "vadodara",
-)
+_REMOTE_TERMS: list[str] = [
+    "remote", "anywhere", "worldwide", "work from anywhere",
+    "wfa", "global", "distributed", "location independent",
+    "no location", "fully remote",
+]
 
 
-def _tag_location(location_raw: str) -> str:
-    """Derive location tag from raw location string. Mirrors tagger.tag_location()."""
-    loc = location_raw.lower().strip() if location_raw else ""
+def _is_relevant_location(location_raw: str) -> bool:
+    """
+    Return True if this raw location string suggests the job is accessible
+    from India (either India-based or any kind of remote).
 
-    if any(kw in loc for kw in _REMOTE_GLOBAL_KEYWORDS):
-        if not _COUNTRY_RESTRICTION_RE.search(loc):
-            return "Remote Global"
+    Intentionally inclusive — the production tagger handles display filtering.
+    Empty location is included (could be remote-by-default).
+    """
+    loc = location_raw.lower().strip()
 
-    if "india" in loc and any(ind in loc for ind in _REMOTE_INDIA_INDICATORS):
-        if not any(city in loc for city in _INDIA_CITY_EXCEPTIONS):
-            return "Remote India"
+    if not loc:
+        return True
 
-    if "bengaluru" in loc or "bangalore" in loc:
-        return "Bengaluru"
-    if "chennai" in loc:
-        return "Chennai"
-    if "hyderabad" in loc:
-        return "Hyderabad"
+    if any(term in loc for term in _INDIA_TERMS):
+        return True
 
-    if "india" in loc or any(city in loc for city in _OTHER_INDIA_CITIES):
-        return "Other India"
+    if any(term in loc for term in _REMOTE_TERMS):
+        return True
 
-    return "Global"
+    return False
 
 
 # ---------------------------------------------------------------------------
 # Checkpoint helpers
 # ---------------------------------------------------------------------------
 
-def _load_checkpoint() -> dict:
-    """Load checkpoint file, or return empty state."""
+def _load_checkpoint() -> tuple[dict, list[dict]]:
+    """
+    Load checkpoint file.
+
+    Returns:
+        (checkpoint_state, found) where found is the list of companies
+        discovered so far (stored inside the checkpoint to survive interruption).
+    """
     if CHECKPOINT_PATH.exists():
         try:
             with open(CHECKPOINT_PATH) as f:
-                return json.load(f)
+                state = json.load(f)
+            found = state.pop("found", [])
+            return state, found
         except Exception:
             pass
-    return {"greenhouse": [], "lever": [], "ashby": [], "done": []}
+    return {"greenhouse": [], "lever": [], "ashby": [], "done": []}, []
 
 
-def _save_checkpoint(state: dict) -> None:
-    """Persist checkpoint to disk."""
+def _save_checkpoint(state: dict, found: list[dict]) -> None:
+    """Persist checkpoint and current found list to disk."""
+    state["found"] = [dict(c) for c in found]
     with open(CHECKPOINT_PATH, "w") as f:
         json.dump(state, f, indent=2)
 
@@ -274,15 +270,17 @@ def _fetch_ashby(slug: str) -> list[dict]:
 # Per-source discovery
 # ---------------------------------------------------------------------------
 
-def _has_relevant_job(jobs: list[dict]) -> bool:
-    """Return True if any job in the list matches keyword AND keep-tag location."""
+def _get_relevant_job(jobs: list[dict]) -> dict | None:
+    """
+    Return the first job that matches keyword AND relevant location,
+    or None if no match. Used to record a sample match in the output.
+    """
     for job in jobs:
         if not _matches_keyword(job["title"], job["description"]):
             continue
-        tag = _tag_location(job["location_raw"])
-        if tag in KEEP_TAGS:
-            return True
-    return False
+        if _is_relevant_location(job["location_raw"]):
+            return job
+    return None
 
 
 def _discover_source(
@@ -317,9 +315,16 @@ def _discover_source(
     for slug in pending:
         try:
             jobs = fetcher(slug)
-            if jobs and _has_relevant_job(jobs):
-                found.append({"name": slug, "ats": ats, "slug": slug})
-                print(f"  KEEP  {slug} ({ats})")
+            match = _get_relevant_job(jobs) if jobs else None
+            if match:
+                found.append({
+                    "name": slug,
+                    "ats": ats,
+                    "slug": slug,
+                    "sample_title": match["title"],
+                    "sample_location": match["location_raw"],
+                })
+                print(f"  KEEP  {slug} ({ats}) — {match['title']!r} @ {match['location_raw']!r}")
         except Exception as e:
             print(f"  ERROR {slug}: {e}", file=sys.stderr)
 
@@ -327,16 +332,16 @@ def _discover_source(
         processed_this_run += 1
 
         if processed_this_run % CHECKPOINT_EVERY == 0:
-            _save_checkpoint(checkpoint_state)
+            _save_checkpoint(checkpoint_state, found)
             done_count = len(checkpoint_state[ats])
             print(f"  [{ats}] checkpoint saved — {done_count}/{total} done, {len(found)} kept so far")
 
         time.sleep(SLEEP_BETWEEN)
 
     # Final checkpoint after source completes.
-    _save_checkpoint(checkpoint_state)
+    _save_checkpoint(checkpoint_state, found)
     checkpoint_state["done"].append(ats)
-    _save_checkpoint(checkpoint_state)
+    _save_checkpoint(checkpoint_state, found)
     print(f"[{ats}] done — kept {sum(1 for c in found if c['ats'] == ats)} companies")
     return found
 
@@ -360,16 +365,9 @@ def _read_slugs(path: Path) -> list[str]:
 
 def _write_output(found: list[dict], stats: dict) -> None:
     """Write discovered_companies.yaml and discover_summary.txt."""
-    # Group by ATS for cleaner YAML output.
     by_ats: dict[str, list[dict]] = {"greenhouse": [], "lever": [], "ashby": []}
     for company in found:
         by_ats[company["ats"]].append(company)
-
-    yaml_data = {
-        "# DISCOVERY OUTPUT — review before merging into companies.yaml": None,
-        "# Generated": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "companies": found,
-    }
 
     with open(OUTPUT_YAML_PATH, "w") as f:
         f.write("# DISCOVERY OUTPUT — review before merging into companies.yaml\n")
@@ -402,24 +400,14 @@ def _write_output(found: list[dict], stats: dict) -> None:
 def main() -> None:
     """Run the discovery script."""
     print("=== InfraJobs Company Discovery ===")
-    print(f"KEEP_TAGS: {sorted(KEEP_TAGS)}")
+    print("Location filter: India terms + any remote term + empty location")
     print(f"Checkpoint: {CHECKPOINT_PATH}")
 
-    checkpoint_state = _load_checkpoint()
+    checkpoint_state, found = _load_checkpoint()
     done_sources = set(checkpoint_state.get("done", []))
-    found: list[dict] = []
 
-    # Reload any companies already found from previous runs by re-reading
-    # the existing output YAML if present.
-    if OUTPUT_YAML_PATH.exists():
-        try:
-            with open(OUTPUT_YAML_PATH) as f:
-                existing = yaml.safe_load(f)
-            if existing and "companies" in existing:
-                found = existing["companies"]
-                print(f"Resuming — {len(found)} companies already in output YAML")
-        except Exception:
-            pass
+    if found:
+        print(f"Resuming — {len(found)} companies already found in checkpoint")
 
     stats: dict = {}
 
