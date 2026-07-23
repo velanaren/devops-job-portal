@@ -106,6 +106,14 @@ def run_scraper() -> None:
             # Discard jobs where role classification returned 'other'.
             jobs = [j for j in jobs if j.get("role_type") != "other"]
 
+            # Discard Global-tagged jobs — these are non-India, non-remote-global
+            # locations (US/EU/etc.) that are not relevant to this portal.
+            before_filter = len(jobs)
+            jobs = [j for j in jobs if j.get("location_tag") != "Global"]
+            filtered_count = before_filter - len(jobs)
+            if filtered_count > 0:
+                print(f"  [{source_name}] {filtered_count} Global jobs excluded")
+
             if jobs:
                 insert_jobs_staging(jobs)
 
