@@ -61,10 +61,24 @@ const locationBadge = (tag) => {
     case "Bengaluru":     return { cls: "badge-city",          label: "📍 Bengaluru" };
     case "Chennai":       return { cls: "badge-city",          label: "📍 Chennai" };
     case "Hyderabad":     return { cls: "badge-city",          label: "📍 Hyderabad" };
-    case "Other India":   return { cls: "badge-other-india",   label: "📍 Other India" };
-    case "Global":        return { cls: "badge-global",        label: "🌐 Global" };
-    default:              return { cls: "badge-global",        label: "🌐 Global" };
+    case "Pune":          return { cls: "badge-city",          label: "📍 Pune" };
+    case "Mumbai":        return { cls: "badge-city",          label: "📍 Mumbai" };
+    case "Delhi NCR":     return { cls: "badge-city",          label: "📍 Delhi NCR" };
+    case "Other India":   return { cls: "badge-other-india",   label: "🇮🇳 Other India" };
+    default:              return { cls: "badge-other-india",   label: "📍 Other" };
   }
+};
+
+const LOCATION_PRIORITY = {
+  "Remote Global": 1,
+  "Remote India":  2,
+  "Bengaluru":     3,
+  "Chennai":       4,
+  "Hyderabad":     5,
+  "Pune":          6,
+  "Mumbai":        7,
+  "Delhi NCR":     8,
+  "Other India":   9,
 };
 
 /**

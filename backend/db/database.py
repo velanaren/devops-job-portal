@@ -118,9 +118,11 @@ def query_jobs(ttl_days: int = 14) -> list[dict]:
             WHEN 'Bengaluru'     THEN 3
             WHEN 'Chennai'       THEN 4
             WHEN 'Hyderabad'     THEN 5
-            WHEN 'Other India'   THEN 6
-            WHEN 'Global'        THEN 7
-            ELSE                      8
+            WHEN 'Pune'          THEN 6
+            WHEN 'Mumbai'        THEN 7
+            WHEN 'Delhi NCR'     THEN 8
+            WHEN 'Other India'   THEN 9
+            ELSE                      10
         END
     """
 

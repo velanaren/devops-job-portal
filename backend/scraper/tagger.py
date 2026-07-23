@@ -1,106 +1,103 @@
-import re
-
 # ---------------------------------------------------------------------------
-# Step 1 — Source-based defaults
+# Step 1 — Source-based Remote Global
 # ---------------------------------------------------------------------------
 
-# Sources where "Worldwide" with no locationRestrictions means truly global.
-_HIMALAYAS_WORLDWIDE: frozenset[str] = frozenset({"Himalayas"})
+# These three sources are curated global-remote boards. Every job from them
+# is inherently work-from-anywhere, regardless of the raw location string.
+_SOURCE_REMOTE_GLOBAL: frozenset[str] = frozenset({"RemoteOK", "Remotive", "Jobicy"})
 
 # ---------------------------------------------------------------------------
-# Step 2 — Remote Global keyword detection
+# Step 2 — Explicit worldwide keyword detection
 # ---------------------------------------------------------------------------
 
+# Only these phrases mean truly global/work-from-anywhere.
+# "Remote" alone and "Fully Remote" alone do NOT qualify — on Greenhouse/Lever/Ashby
+# those terms typically mean remote within US/EU, not accessible from India.
 _REMOTE_GLOBAL_KEYWORDS: tuple[str, ...] = (
-    "anywhere",
-    "worldwide",
     "work from anywhere",
-    "no location",
-    "fully remote",
-    "global remote",
-    "remote - worldwide",
-    "wfa",
+    "anywhere in the world",
+    "worldwide",
+    "no location restriction",
     "location independent",
-)
-
-# Country/region names that indicate a geographic restriction.
-# If any of these appear alongside a Remote Global keyword, the job is NOT
-# Remote Global — it is limited to a specific region.
-_COUNTRY_RESTRICTION_RE = re.compile(
-    r"\b("
-    r"usa?|united states|us only"
-    r"|canada|uk|united kingdom"
-    r"|europe|emea|latam"
-    r"|australia|new zealand"
-    r"|germany|france|netherlands|sweden|denmark|norway|finland"
-    r"|spain|italy|portugal|poland"
-    r"|brazil|colombia|argentina|mexico"
-    r"|singapore|japan|china|korea"
-    r"|india"
-    r")\b",
-    re.IGNORECASE,
+    "wfa",
+    "remote - worldwide",
+    "remote - global",
+    "remote - anywhere",
+    "global - remote",
+    "global remote",
+    "remote worldwide",
+    "remote global",
 )
 
 # ---------------------------------------------------------------------------
-# Step 3 — Remote India indicators
+# Step 3 — India city checks
 # ---------------------------------------------------------------------------
 
-_REMOTE_INDIA_INDICATORS: tuple[str, ...] = (
-    "remote",
-    "work from home",
-    "wfh",
-    "pan india",
-    "anywhere in india",
-)
+# Checked BEFORE the US false-positive guard so that e.g. "Pune, IN" correctly
+# returns "Pune" rather than being swallowed by the Indiana/IN indicator.
 
-# Cities that should NOT be tagged Remote India — they get their own category.
-_INDIA_CITY_EXCEPTIONS: tuple[str, ...] = (
-    "bengaluru",
-    "bangalore",
-    "chennai",
-    "hyderabad",
+# ---------------------------------------------------------------------------
+# Step 4 — US false positive guard
+# ---------------------------------------------------------------------------
+
+_US_CITY_INDICATORS: tuple[str, ...] = (
+    "united states", "usa", "u.s.a", "u.s.",
+    ", ca", ", ny", ", tx", ", wa", ", ma",
+    ", il", ", ga", ", fl", ", co", ", va",
+    ", md", ", pa", ", nc", ", oh", ", mi",
+    ", nj", ", az", ", mn", ", mo", ", tn",
+    "indiana", "indianapolis",
+    "california", "texas", "washington dc",
+    "washington, d.c", "new york, ny",
+    "new york, new york",
 )
 
 # ---------------------------------------------------------------------------
-# Step 7 — Other India city list
+# Step 5 — Remote India
+# ---------------------------------------------------------------------------
+
+_INDIA_REMOTE_SIGNALS: tuple[str, ...] = (
+    "remote", "wfh", "work from home",
+    "pan india", "anywhere in india",
+    "india remote", "remote india",
+)
+
+# ---------------------------------------------------------------------------
+# Step 6 — Other India cities
 # ---------------------------------------------------------------------------
 
 _OTHER_INDIA_CITIES: tuple[str, ...] = (
-    "pune",
-    "mumbai",
-    "delhi",
-    "noida",
-    "gurugram",
-    "gurgaon",
-    "kolkata",
-    "ahmedabad",
-    "jaipur",
-    "kochi",
-    "coimbatore",
-    "thiruvananthapuram",
-    "trivandrum",
-    "indore",
-    "nagpur",
-    "chandigarh",
-    "lucknow",
-    "bhopal",
-    "surat",
-    "vadodara",
+    "kolkata", "calcutta", "ahmedabad",
+    "jaipur", "kochi", "cochin",
+    "coimbatore", "thiruvananthapuram",
+    "trivandrum", "indore", "nagpur",
+    "chandigarh", "lucknow", "bhopal",
+    "surat", "vadodara", "baroda",
+    "visakhapatnam", "vizag",
+    "bhubaneswar", "patna", "ranchi",
+    "mysuru", "mysore", "mangalore",
+    "mangaluru", "thrissur", "madurai",
 )
+
+
+def _is_us_location(loc: str) -> bool:
+    """Return True if the lowercased location string matches a US indicator."""
+    return any(indicator in loc for indicator in _US_CITY_INDICATORS)
 
 
 def tag_location(location_raw: str, source_name: str) -> str:
     """
-    Derive a 7-category location tag from the raw location string and source name.
+    Derive a location tag from the raw location string and source name.
 
     Priority order (highest to lowest):
-      1. Remote Global  — truly work from anywhere worldwide, no country restriction
-      2. Remote India   — work remotely from within India
-      3. Bengaluru      — physical presence in Bengaluru / Bangalore
-      4. Chennai        — physical presence in Chennai
-      5. Hyderabad      — physical presence in Hyderabad
-      6. Other India    — other Indian cities (Pune, Mumbai, Delhi, etc.)
-      7. Global         — international locations not matching the above
+      1.  Remote Global  — source-based (RemoteOK / Remotive / Jobicy always)
+      2.  Remote Global  — explicit worldwide keyword
+      3.  Bengaluru / Chennai / Hyderabad / Pune / Mumbai / Delhi NCR
+          (city checks run BEFORE the US guard so "Pune, IN" → Pune, not Global)
+      4.  Global         — US false-positive detected → filter out
+      5.  Remote India   — india + remote signal
+      6.  Other India    — remaining India locations
+      7.  Global         — fallback
 
     Args:
         location_raw: Raw location string as received from the source API.
@@ -108,69 +105,89 @@ def tag_location(location_raw: str, source_name: str) -> str:
 
     Returns:
         One of: 'Remote Global', 'Remote India', 'Bengaluru', 'Chennai',
-        'Hyderabad', 'Other India', 'Global'.
+        'Hyderabad', 'Pune', 'Mumbai', 'Delhi NCR', 'Other India', 'Global'.
     """
     loc = location_raw.lower().strip() if location_raw else ""
 
     # ------------------------------------------------------------------
-    # Step 1 — Source-based defaults before text matching.
+    # Step 1 — Source-based Remote Global.
     #
-    # Himalayas uses locationRestrictions=[] to mean truly worldwide remote.
-    # When that field is empty the API returns "Worldwide".
+    # Curated global-remote boards: every job is work-from-anywhere.
+    # Himalayas: empty location or "Worldwide" means truly global.
     # ------------------------------------------------------------------
-    if source_name in _HIMALAYAS_WORLDWIDE and location_raw == "Worldwide":
+    if source_name in _SOURCE_REMOTE_GLOBAL:
+        return "Remote Global"
+
+    if source_name == "Himalayas" and loc in ("worldwide", ""):
         return "Remote Global"
 
     # ------------------------------------------------------------------
-    # Step 2 — Remote Global via explicit keywords.
+    # Step 2 — Explicit worldwide keyword.
     #
-    # Matches only when a Remote Global keyword is present AND no country
-    # name / region restriction is also present in the string.
+    # "Remote" alone and "Fully Remote" alone are intentionally absent from
+    # the keyword list — on ATS boards those mean US/EU remote, not India.
     # ------------------------------------------------------------------
     if any(kw in loc for kw in _REMOTE_GLOBAL_KEYWORDS):
-        if not _COUNTRY_RESTRICTION_RE.search(loc):
-            return "Remote Global"
+        return "Remote Global"
 
     # ------------------------------------------------------------------
-    # Step 3 — Remote India.
+    # Step 3 — Specific India city checks.
     #
-    # Requires "india" + a remote-work indicator, but must NOT mention a
-    # specific Indian city (those are handled in Steps 4–6 below).
-    # ------------------------------------------------------------------
-    if "india" in loc and any(ind in loc for ind in _REMOTE_INDIA_INDICATORS):
-        if not any(city in loc for city in _INDIA_CITY_EXCEPTIONS):
-            return "Remote India"
-
-    # ------------------------------------------------------------------
-    # Step 4 — Bengaluru.
+    # Run BEFORE the US guard so that compound strings like "Pune, IN" or
+    # "Mumbai, MH" are caught here rather than misclassified as US.
     # ------------------------------------------------------------------
     if "bengaluru" in loc or "bangalore" in loc:
         return "Bengaluru"
 
-    # ------------------------------------------------------------------
-    # Step 5 — Chennai.
-    # ------------------------------------------------------------------
     if "chennai" in loc:
         return "Chennai"
 
-    # ------------------------------------------------------------------
-    # Step 6 — Hyderabad.
-    # ------------------------------------------------------------------
     if "hyderabad" in loc:
         return "Hyderabad"
 
+    if "pune" in loc:
+        return "Pune"
+
+    if "mumbai" in loc or "bombay" in loc:
+        return "Mumbai"
+
+    if any(city in loc for city in ("delhi", "noida", "gurugram", "gurgaon", "faridabad")):
+        return "Delhi NCR"
+
     # ------------------------------------------------------------------
-    # Step 7 — Other India.
+    # Step 4 — US false-positive guard.
     #
-    # Catches any remaining Indian locations: bare "india" keyword or a
-    # recognised Indian city not covered by Steps 4–6.
+    # Must come AFTER Step 3 so specific India cities already returned.
+    # Catches "Remote - United States", "Indianapolis, IN", state suffixes, etc.
+    # ------------------------------------------------------------------
+    if _is_us_location(loc):
+        return "Global"
+
+    # ------------------------------------------------------------------
+    # Step 5 — Remote India.
+    #
+    # Requires an India indicator AND a remote-work signal.
+    # loc.endswith(", in") catches "Pune, IN"-style strings not caught in
+    # Step 3 (though those should already be handled above).
+    # ------------------------------------------------------------------
+    has_india = "india" in loc or loc.endswith(", in")
+    has_remote = any(signal in loc for signal in _INDIA_REMOTE_SIGNALS)
+
+    if has_india and has_remote:
+        return "Remote India"
+
+    # ------------------------------------------------------------------
+    # Step 6 — Other India.
+    #
+    # Bare "india" keyword or an Indian city not in the specific city list.
     # ------------------------------------------------------------------
     if "india" in loc or any(city in loc for city in _OTHER_INDIA_CITIES):
         return "Other India"
 
     # ------------------------------------------------------------------
-    # Step 8 — Global fallback.
+    # Step 7 — Global fallback.
     #
-    # International locations that are not India and not truly remote.
+    # International locations not matching any India pattern.
+    # These are filtered out by the scraper (CHANGE 2) before DB write.
     # ------------------------------------------------------------------
     return "Global"
