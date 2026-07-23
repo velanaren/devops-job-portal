@@ -1,4 +1,5 @@
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 
 import requests
@@ -10,6 +11,8 @@ from scraper.tagger import tag_location
 
 SOURCE_NAME = "Ashby"
 API_BASE = "https://jobs.ashbyhq.com/api/non-authenticated-open-job-listings"
+MAX_WORKERS = 10
+SLEEP_BETWEEN = 0.2
 
 HEADERS = {
     "User-Agent": USER_AGENT,
@@ -86,15 +89,39 @@ def _infer_job_type(location_raw: str) -> str:
     return "onsite"
 
 
+def _fetch_and_filter(company: dict, today: str) -> list[dict]:
+    """
+    Fetch and normalise jobs for one Ashby company. Returns empty list on error.
+
+    Intended for use inside a ThreadPoolExecutor worker.
+    """
+    slug = company["slug"]
+    name = company["name"]
+    time.sleep(SLEEP_BETWEEN)
+    try:
+        raw_jobs = _fetch_company_jobs(slug)
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code in (404, 403):
+            return []
+        raise
+    result = []
+    for item in raw_jobs:
+        normalised = _normalise(item, name, slug, today)
+        if normalised:
+            result.append(normalised)
+    return result
+
+
 def fetch_jobs() -> list[dict]:
     """
     Fetch DevOps-relevant jobs from Ashby ATS for all configured companies.
 
     Compliance:
     - 1 HTTP call per company slug.
-    - 1-second sleep between company calls.
+    - SLEEP_BETWEEN seconds between calls (enforced per worker via sleep in worker).
     - User-Agent header on every request.
     - apply_url links to the original job posting on jobs.ashbyhq.com.
+    - Up to MAX_WORKERS companies fetched in parallel.
 
     Returns:
         List of normalised job dicts ready for DB insertion.
@@ -103,23 +130,12 @@ def fetch_jobs() -> list[dict]:
     companies = load_companies("ashby")
     jobs: list[dict] = []
 
-    for i, company in enumerate(companies):
-        if i > 0:
-            time.sleep(1)
-
-        slug = company["slug"]
-        name = company["name"]
-
-        try:
-            raw_jobs = _fetch_company_jobs(slug)
-        except requests.HTTPError as exc:
-            if exc.response is not None and exc.response.status_code in (404, 403):
-                continue
-            raise
-
-        for item in raw_jobs:
-            normalised = _normalise(item, name, slug, today)
-            if normalised:
-                jobs.append(normalised)
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = {pool.submit(_fetch_and_filter, c, today): c for c in companies}
+        for future in as_completed(futures):
+            try:
+                jobs.extend(future.result())
+            except Exception:
+                pass
 
     return jobs
