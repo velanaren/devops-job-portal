@@ -30,6 +30,25 @@
     <section class="filters-section" aria-label="Job filters">
       <div class="filters-inner">
 
+        <div class="filter-row filter-row-search">
+          <div class="filter-group filter-group-search">
+            <label for="filter-search" class="filter-label">Search</label>
+            <input type="search"
+                   id="filter-search"
+                   class="filter-search"
+                   placeholder="Search title, company or skills…"
+                   autocomplete="off" />
+          </div>
+
+          <div class="filter-group filter-group-sort">
+            <label for="filter-sort" class="filter-label">Sort By</label>
+            <select id="filter-sort" class="filter-select">
+              <option value="relevance">Relevance</option>
+              <option value="newest">Newest First</option>
+            </select>
+          </div>
+        </div>
+
         <div class="filter-row">
           <div class="filter-group">
             <label for="filter-role" class="filter-label">Role</label>
@@ -74,15 +93,9 @@
 
           <div class="filter-group">
             <label for="filter-source" class="filter-label">Source</label>
+            <!-- Options are populated from loaded job data in app.js -->
             <select id="filter-source" class="filter-select">
               <option value="">All Sources</option>
-              <option value="RemoteOK">RemoteOK</option>
-              <option value="Remotive">Remotive</option>
-              <option value="Jobicy">Jobicy</option>
-              <option value="Himalayas">Himalayas</option>
-              <option value="Greenhouse">Greenhouse</option>
-              <option value="Lever">Lever</option>
-              <option value="Ashby">Ashby</option>
             </select>
           </div>
 
