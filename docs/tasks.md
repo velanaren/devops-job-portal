@@ -919,6 +919,54 @@ Create Grafana SLO dashboards:
 
 ---
 
+**TASK-039**
+**Owner:** 🤖 Claude
+**Title:** Frontend UI improvements — search, sort, URL filters, safe rendering
+
+```
+All changes are frontend-only (index.html, styles.css, app.js).
+No backend or API changes. Filtering remains fully client-side.
+
+1. Text search box
+   - Free-text input matching title, company, and skills (case-insensitive)
+   - Debounced input (200ms) — filters in memory, no network calls
+
+2. URL-persisted filters
+   - Sync all filter state (search, role, location, type, source,
+     experience, posted, sort) to the URL query string
+   - On page load, restore filters from the URL
+   - Filtered views become shareable/bookmarkable; refresh keeps state
+
+3. Sort control
+   - "Relevance" (current role-priority sort) and "Newest first"
+   - Default remains Relevance
+
+4. Chunked rendering
+   - Render cards in batches of 60 with an IntersectionObserver
+     sentinel ("infinite scroll") to keep first paint fast
+
+5. XSS-safe card rendering
+   - Escape all job fields interpolated into card HTML
+   - Validate apply_url/source_url are http(s) before rendering links
+
+6. Skeleton loading state
+   - Replace "Loading jobs..." text with skeleton placeholder cards
+
+7. Data-driven source dropdown
+   - Populate the Source filter options from the loaded job data
+     instead of hardcoding them in index.html
+
+8. Client-side dedup collapse
+   - Collapse duplicate listings (same normalised company + title),
+     keeping the earliest-posted entry
+```
+**Depends on:** TASK-019
+**Acceptance:** Search, sort, and all filters work together and survive
+page reload via URL; duplicate (company, title) pairs appear once; job
+titles containing HTML characters render as text, not markup
+
+---
+
 ## Task Summary
 
 | Phase | Epic | Tasks | Owner |
