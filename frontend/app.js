@@ -383,6 +383,21 @@ const observer = new IntersectionObserver((entries) => {
   if (entries.some(e => e.isIntersecting)) renderNextBatch();
 }, { rootMargin: "600px" });
 
+// Scroll-listener fallback: covers environments where the
+// IntersectionObserver stays dormant (e.g. some embedded webviews).
+let scrollCheckPending = false;
+window.addEventListener("scroll", () => {
+  if (scrollCheckPending || !sentinel.isConnected) return;
+  scrollCheckPending = true;
+  requestAnimationFrame(() => {
+    scrollCheckPending = false;
+    if (!sentinel.isConnected) return;
+    if (sentinel.getBoundingClientRect().top < window.innerHeight + 600) {
+      renderNextBatch();
+    }
+  });
+}, { passive: true });
+
 /**
  * Append the next batch of visibleJobs cards to the container.
  * Disconnects the sentinel once everything is rendered.
