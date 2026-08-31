@@ -171,6 +171,29 @@ a:hover { text-decoration: underline; color: var(--color-accent-hover); }
   border-color: var(--color-accent);
 }
 
+.filter-row-search { align-items: flex-end; }
+
+.filter-group-search { flex: 3 1 280px; }
+
+.filter-group-sort { flex: 0 1 180px; }
+
+.filter-search {
+  padding: .45rem .65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: .875rem;
+  transition: border-color var(--transition);
+}
+
+.filter-search:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.filter-search::placeholder { color: var(--color-text-muted); }
+
 .filters-meta {
   display: flex;
   align-items: center;
@@ -372,6 +395,31 @@ a:hover { text-decoration: underline; color: var(--color-accent-hover); }
   background: var(--color-accent-hover);
   text-decoration: none;
   color: #fff;
+}
+
+/* --- Skeleton loading cards -------------------------------- */
+.skeleton {
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+
+.skeleton-card { pointer-events: none; }
+.skeleton-title  { height: 1.1rem; width: 75%; }
+.skeleton-line   { height: .8rem;  width: 55%; }
+.skeleton-line.short { width: 40%; }
+.skeleton-footer { height: 1.8rem; width: 100%; margin-top: .5rem; }
+
+/* --- Infinite-scroll sentinel ------------------------------- */
+.scroll-sentinel {
+  grid-column: 1 / -1;
+  height: 1px;
+  order: 9999; /* keep the sentinel after all cards in the grid */
 }
 
 /* --- Footer ------------------------------------------------- */
