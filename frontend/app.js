@@ -18,12 +18,51 @@ const SKELETON_COUNT = 9;
 // Debounce delay for the search input, in milliseconds.
 const SEARCH_DEBOUNCE_MS = 200;
 
+// localStorage keys (per-viewer conveniences only — never required).
+const STORAGE_SAVED = "infrajobs.saved";
+const STORAGE_LAST_VISIT = "infrajobs.lastVisit";
+
+// Default value of the "Posted Within" filter (days).
+const DEFAULT_DAYS = "14";
+
+// Role options for the multi-select. One option may cover several role_types.
+const ROLE_OPTIONS = [
+  { value: "devops",   label: "DevOps / DevSecOps",       types: ["devops"] },
+  { value: "sre",      label: "SRE / Site Reliability",   types: ["sre"] },
+  { value: "platform", label: "Platform Engineer",        types: ["platform"] },
+  { value: "mlops",    label: "MLOps",                    types: ["mlops"] },
+  { value: "cloud",    label: "Cloud Engineer",           types: ["cloud"] },
+  { value: "infra",    label: "Infrastructure / Systems", types: ["infra"] },
+  { value: "support",  label: "App / Prod / Tech Support", types: ["appsupport", "techsupport"] },
+  { value: "itops",    label: "IT Operations / DBA",      types: ["itops"] },
+];
+
+// Short role label shown on each card, keyed by role_type.
+const ROLE_LABELS = {
+  devops: "DevOps", sre: "SRE", platform: "Platform", mlops: "MLOps",
+  cloud: "Cloud", infra: "Infra", appsupport: "App Support",
+  techsupport: "Tech Support", itops: "IT Ops",
+};
+
+const LOCATION_OPTIONS = [
+  "Remote Global", "Remote India", "Bengaluru", "Chennai", "Hyderabad",
+  "Pune", "Mumbai", "Delhi NCR", "Other India",
+].map(tag => ({ value: tag, label: tag }));
+
 // Full deduplicated job list loaded once on page load — never mutated.
 let allJobs = [];
 
 // Currently filtered + sorted list, rendered incrementally in batches.
 let visibleJobs = [];
 let renderedCount = 0;
+
+// Multi-select state.
+const selectedRoles = new Set();
+const selectedLocations = new Set();
+
+// Saved job keys and the previous visit time (ISO date), from localStorage.
+let savedKeys = new Set();
+let lastVisitDate = null;
 
 // --- DOM refs ------------------------------------------------
 const jobsContainer  = document.getElementById("jobs-container");
@@ -32,6 +71,11 @@ const lastUpdated    = document.getElementById("last-updated");
 const loadingMsg     = document.getElementById("loading-msg");
 const errorMsg       = document.getElementById("error-msg");
 const btnClear       = document.getElementById("btn-clear");
+const activeChips    = document.getElementById("active-chips");
+const savedCount     = document.getElementById("saved-count");
+const btnFilters     = document.getElementById("btn-filters-toggle");
+const filtersCount   = document.getElementById("filters-toggle-count");
+const filterRowMain  = document.getElementById("filter-row-main");
 
 const filterSearch     = document.getElementById("filter-search");
 const filterSort       = document.getElementById("filter-sort");
@@ -41,23 +85,27 @@ const filterType       = document.getElementById("filter-type");
 const filterSource     = document.getElementById("filter-source");
 const filterExperience = document.getElementById("filter-experience");
 const filterPosted     = document.getElementById("filter-posted");
+const filterSaved      = document.getElementById("filter-saved");
 
 const SELECT_FILTERS = [
-  filterRole, filterLocation, filterType,
-  filterSource, filterExperience, filterPosted, filterSort,
+  filterType, filterSource, filterExperience, filterPosted, filterSort,
 ];
 
-// Filter state ↔ URL query-string parameter mapping.
+// Single-value filter state ↔ URL query-string parameter mapping.
 // Each entry: [element, param name, default value].
 const URL_PARAM_MAP = [
   [filterSearch,     "q",      ""],
-  [filterRole,       "role",   ""],
-  [filterLocation,   "loc",    ""],
   [filterType,       "type",   ""],
   [filterSource,     "src",    ""],
   [filterExperience, "exp",    ""],
-  [filterPosted,     "days",   "14"],
+  [filterPosted,     "days",   DEFAULT_DAYS],
   [filterSort,       "sort",   "relevance"],
+];
+
+// Multi-select filters ↔ URL (comma-separated values).
+const MULTI_PARAM_MAP = [
+  [selectedRoles,     "role", ROLE_OPTIONS],
+  [selectedLocations, "loc",  LOCATION_OPTIONS],
 ];
 
 // --- Utilities -----------------------------------------------
@@ -99,6 +147,56 @@ const debounce = (fn, delayMs) => {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), delayMs);
   };
+};
+
+/**
+ * Read a JSON value from localStorage, returning fallback on any error
+ * (private mode, blocked storage, corrupt data).
+ * @param {string} key
+ * @param {*} fallback
+ */
+const storageGet = (key, fallback) => {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+};
+
+/**
+ * Write a JSON value to localStorage, ignoring errors.
+ * @param {string} key
+ * @param {*} value
+ */
+const storageSet = (key, value) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage unavailable — feature degrades silently */
+  }
+};
+
+/**
+ * Stable identity for a job across days and sources.
+ * @param {Object} job
+ * @returns {string}
+ */
+const jobKey = (job) =>
+  `${(job.company || "").trim().toLowerCase()}|${(job.title || "").trim().toLowerCase()}`;
+
+/**
+ * Describe how long ago a UTC timestamp was ("3h ago").
+ * @param {Date} date
+ * @returns {string}
+ */
+const timeAgo = (date) => {
+  const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
+  if (minutes < 1)  return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48)   return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 };
 
 /**
@@ -188,26 +286,28 @@ const sortJobs = (jobs, mode) => [...jobs].sort((a, b) => {
 /**
  * Collapse duplicate listings (same normalised company + title),
  * keeping the earliest-posted entry so "posted X ago" stays honest.
+ * The kept entry gets an `alsoOn` list of the other sources' links.
+ * Returns new objects — the API data is not mutated.
  * @param {Array} jobs
  * @returns {Array}
  */
 const dedupJobs = (jobs) => {
-  const seen = new Map();
+  const groups = new Map();
   for (const job of jobs) {
-    const key = `${(job.company || "").trim().toLowerCase()}|${(job.title || "").trim().toLowerCase()}`;
-    const existing = seen.get(key);
-    if (!existing) {
-      seen.set(key, job);
-    } else {
-      // Keep whichever was posted earliest (oldest date wins).
-      const existingDate = existing.posted_date || existing.fetched_date || "";
-      const jobDate = job.posted_date || job.fetched_date || "";
-      if (jobDate && (!existingDate || jobDate < existingDate)) {
-        seen.set(key, job);
-      }
-    }
+    const key = jobKey(job);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(job);
   }
-  return [...seen.values()];
+  const result = [];
+  for (const group of groups.values()) {
+    const dateOf = (j) => j.posted_date || j.fetched_date || "9999";
+    const kept = group.reduce((best, j) => (dateOf(j) < dateOf(best) ? j : best));
+    const alsoOn = group
+      .filter(j => j !== kept && j.source_name !== kept.source_name)
+      .map(j => ({ name: j.source_name, url: safeUrl(j.apply_url) }));
+    result.push({ ...kept, alsoOn });
+  }
+  return result;
 };
 
 /**
@@ -271,6 +371,12 @@ const readFiltersFromUrl = () => {
       el.value = fallback;
     }
   }
+  for (const [set, param, options] of MULTI_PARAM_MAP) {
+    set.clear();
+    const valid = new Set(options.map(o => o.value));
+    (params.get(param) || "").split(",").filter(v => valid.has(v)).forEach(v => set.add(v));
+  }
+  filterSaved.checked = params.get("saved") === "1";
 };
 
 /**
@@ -282,6 +388,10 @@ const writeFiltersToUrl = () => {
   for (const [el, param, fallback] of URL_PARAM_MAP) {
     if (el.value && el.value !== fallback) params.set(param, el.value);
   }
+  for (const [set, param] of MULTI_PARAM_MAP) {
+    if (set.size) params.set(param, [...set].join(","));
+  }
+  if (filterSaved.checked) params.set("saved", "1");
   const query = params.toString();
   const newUrl = query
     ? `${window.location.pathname}?${query}`
@@ -322,20 +432,41 @@ const buildCard = (job) => {
   const linkRel   = getSourceLinkRel(job.source_name);
   const sourceUrl = safeUrl(job.source_url);
   const applyUrl  = safeUrl(job.apply_url);
+  const key       = jobKey(job);
+  const isSaved   = savedKeys.has(key);
+  const postedOn  = job.posted_date || job.fetched_date || "";
+  const isNew     = lastVisitDate && postedOn && postedOn >= lastVisitDate;
+  const roleLabel = ROLE_LABELS[job.role_type];
+
+  const alsoOn = (job.alsoOn || [])
+    .map(s => s.url
+      ? `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.name)}</a>`
+      : escapeHtml(s.name))
+    .join(", ");
 
   const article = document.createElement("article");
   article.className = "job-card";
   article.innerHTML = `
     <div class="card-top">
-      <h2 class="card-title">${escapeHtml(job.title)}</h2>
-      <span class="card-location-badge ${badge.cls}">${escapeHtml(badge.label)}</span>
+      <h2 class="card-title">
+        ${isNew ? `<span class="badge-new">New</span>` : ""}
+        ${escapeHtml(job.title)}
+      </h2>
+      <button type="button" class="btn-save" data-key="${escapeHtml(key)}"
+              aria-pressed="${isSaved}"
+              aria-label="${isSaved ? "Remove from saved" : "Save job"}: ${escapeHtml(job.title)}"
+              title="${isSaved ? "Saved" : "Save"}">${isSaved ? "★" : "☆"}</button>
     </div>
     <p class="card-company">${escapeHtml(job.company) || "—"}</p>
+    <div class="card-badges">
+      <span class="card-location-badge ${badge.cls}">${escapeHtml(badge.label)}</span>
+      ${roleLabel ? `<span class="card-role">${escapeHtml(roleLabel)}</span>` : ""}
+    </div>
     <div class="card-meta">
       ${job.location_raw ? `<span class="card-meta-item">📍 ${escapeHtml(job.location_raw)}</span>` : ""}
       ${job.job_type     ? `<span class="card-meta-item">💼 ${escapeHtml(jobTypeLabel(job.job_type))}</span>` : ""}
       ${job.experience_level ? `<span class="card-meta-item">🎯 ${escapeHtml(expLabel(job.experience_level))}</span>` : ""}
-      <span class="card-meta-item">🕐 ${escapeHtml(relativeTime(job.posted_date || job.fetched_date))}</span>
+      <span class="card-meta-item">🕐 ${escapeHtml(relativeTime(postedOn))}</span>
     </div>
     ${skills ? `<div class="card-tags">${skills}</div>` : ""}
     <div class="card-footer">
@@ -343,6 +474,7 @@ const buildCard = (job) => {
         ${sourceUrl
           ? `via <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="${linkRel}">${escapeHtml(job.source_name)}</a>`
           : `via ${escapeHtml(job.source_name)}`}
+        ${alsoOn ? `<span class="card-also-on">· also on ${alsoOn}</span>` : ""}
       </span>
       ${applyUrl
         ? `<a class="btn-apply" href="${escapeHtml(applyUrl)}" target="_blank" rel="${linkRel}">Apply →</a>`
@@ -433,10 +565,7 @@ const renderJobs = (jobs) => {
   jobsContainer.innerHTML = "";
 
   if (jobs.length === 0) {
-    const p = document.createElement("p");
-    p.className = "no-results";
-    p.textContent = "No jobs match your current filters.";
-    jobsContainer.appendChild(p);
+    jobsContainer.appendChild(buildEmptyState());
   } else {
     if (jobs.length > RENDER_BATCH_SIZE) {
       jobsContainer.appendChild(sentinel);
@@ -448,71 +577,232 @@ const renderJobs = (jobs) => {
   jobCount.textContent = `${jobs.length} job${jobs.length !== 1 ? "s" : ""} found`;
 };
 
+// --- Empty state -------------------------------------------
+
+/**
+ * Build a helpful "no results" block with next-step suggestions.
+ * @returns {HTMLElement}
+ */
+const buildEmptyState = () => {
+  const box = document.createElement("div");
+  box.className = "no-results";
+  const tips = [];
+  if (filterSaved.checked && savedKeys.size === 0) {
+    tips.push("You have no saved jobs yet — tap ☆ on a job to save it.");
+  } else {
+    if (filterSearch.value.trim()) tips.push("Try fewer or different search words.");
+    if (selectedLocations.size)    tips.push("Add more locations, or include Remote Global.");
+    if (filterPosted.value !== DEFAULT_DAYS) tips.push("Widen “Posted Within” to 14 days.");
+    if (filterExperience.value)    tips.push("Remove the Experience filter.");
+  }
+  box.innerHTML = `
+    <p class="no-results-title">No jobs match your current filters.</p>
+    ${tips.length ? `<ul class="no-results-tips">${tips.map(t => `<li>${escapeHtml(t)}</li>`).join("")}</ul>` : ""}
+    <button type="button" class="btn-clear btn-clear-inline">Clear all filters</button>
+  `;
+  box.querySelector("button").addEventListener("click", clearFilters);
+  return box;
+};
+
 // --- Filtering -----------------------------------------------
+
+/**
+ * Snapshot the current filter selections.
+ * @returns {Object}
+ */
+const readFilterState = () => {
+  const days = parseInt(filterPosted.value, 10);
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - days);
+  cutoff.setUTCHours(0, 0, 0, 0);
+  const roleTypes = new Set(
+    ROLE_OPTIONS.filter(o => selectedRoles.has(o.value)).flatMap(o => o.types)
+  );
+  return {
+    words:      filterSearch.value.trim().toLowerCase().split(/\s+/).filter(Boolean),
+    roleTypes,
+    locations:  selectedLocations,
+    type:       filterType.value,
+    source:     filterSource.value,
+    experience: filterExperience.value,
+    savedOnly:  filterSaved.checked,
+    cutoff,
+  };
+};
+
+/**
+ * Return true if the job passes every filter in state, optionally
+ * ignoring one facet (used to compute option counts for that facet).
+ * @param {Object} job
+ * @param {Object} state - from readFilterState()
+ * @param {string} [ignore] - "role" or "location"
+ */
+const jobMatches = (job, state, ignore) => {
+  if (state.words.length) {
+    const haystack = [
+      job.title, job.company, job.skills, job.location_raw, job.location_tag,
+      ROLE_LABELS[job.role_type], job.source_name,
+    ].join(" ").toLowerCase();
+    if (!state.words.every(w => haystack.includes(w))) return false;
+  }
+  if (ignore !== "role" && state.roleTypes.size && !state.roleTypes.has(job.role_type)) return false;
+  if (ignore !== "location" && state.locations.size && !state.locations.has(job.location_tag)) return false;
+  if (state.type       && job.job_type         !== state.type)       return false;
+  if (state.source     && job.source_name      !== state.source)     return false;
+  if (state.experience && job.experience_level !== state.experience) return false;
+  if (state.savedOnly  && !savedKeys.has(jobKey(job)))               return false;
+
+  const dateStr = job.posted_date || job.fetched_date;
+  if (dateStr && new Date(dateStr + "T00:00:00Z") < state.cutoff) return false;
+  return true;
+};
+
+/**
+ * Build (or rebuild) a multi-select checkbox list with live counts.
+ * Counts reflect all other active filters, so a user sees how many
+ * jobs each option would add.
+ * @param {HTMLDetailsElement} root
+ * @param {Array} options - [{value, label, types?}]
+ * @param {Set} selected
+ * @param {Function} countFor - option → number
+ * @param {string} allLabel - summary text when nothing is selected
+ */
+const renderMultiSelect = (root, options, selected, countFor, allLabel) => {
+  const list = root.querySelector(".multi-options");
+  list.innerHTML = options.map(o => `
+    <label class="multi-option">
+      <input type="checkbox" value="${escapeHtml(o.value)}" ${selected.has(o.value) ? "checked" : ""} />
+      <span>${escapeHtml(o.label)}</span>
+      <span class="multi-count">${countFor(o)}</span>
+    </label>`).join("");
+
+  const summary = root.querySelector("summary");
+  if (selected.size === 0) summary.textContent = allLabel;
+  else if (selected.size === 1) {
+    summary.textContent = options.find(o => selected.has(o.value))?.label || allLabel;
+  } else summary.textContent = `${selected.size} selected`;
+};
+
+/**
+ * Recompute counts and redraw both multi-selects.
+ * @param {Object} state
+ */
+const refreshMultiSelects = (state) => {
+  const forRole = allJobs.filter(j => jobMatches(j, state, "role"));
+  const forLoc  = allJobs.filter(j => jobMatches(j, state, "location"));
+  renderMultiSelect(filterRole, ROLE_OPTIONS, selectedRoles,
+    o => forRole.filter(j => o.types.includes(j.role_type)).length, "All Roles");
+  renderMultiSelect(filterLocation, LOCATION_OPTIONS, selectedLocations,
+    o => forLoc.filter(j => j.location_tag === o.value).length, "All Locations");
+};
+
+/**
+ * Render removable chips for every active (non-default) filter.
+ * @returns {number} number of active filters
+ */
+const renderChips = () => {
+  const chips = [];
+  const q = filterSearch.value.trim();
+  if (q) chips.push({ label: `“${q}”`, clear: () => { filterSearch.value = ""; } });
+  for (const v of selectedRoles) {
+    const label = ROLE_OPTIONS.find(o => o.value === v)?.label || v;
+    chips.push({ label, clear: () => selectedRoles.delete(v) });
+  }
+  for (const v of selectedLocations) chips.push({ label: v, clear: () => selectedLocations.delete(v) });
+  const selectChip = (el, fallback) => {
+    if (el.value !== fallback) {
+      chips.push({ label: el.options[el.selectedIndex].text, clear: () => { el.value = fallback; } });
+    }
+  };
+  selectChip(filterType, "");
+  selectChip(filterSource, "");
+  selectChip(filterExperience, "");
+  selectChip(filterPosted, DEFAULT_DAYS);
+  if (filterSaved.checked) chips.push({ label: "★ Saved only", clear: () => { filterSaved.checked = false; } });
+
+  activeChips.innerHTML = "";
+  chips.forEach(chip => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip";
+    btn.setAttribute("aria-label", `Remove filter ${chip.label}`);
+    btn.innerHTML = `${escapeHtml(chip.label)} <span aria-hidden="true">×</span>`;
+    btn.addEventListener("click", () => { chip.clear(); applyFilters(); });
+    activeChips.appendChild(btn);
+  });
+  activeChips.hidden = chips.length === 0;
+  return chips.length;
+};
 
 /**
  * Apply all active filter selections to allJobs and re-render.
  * Runs entirely in memory — no network requests.
  */
 const applyFilters = () => {
-  const search     = filterSearch.value.trim().toLowerCase();
-  const role       = filterRole.value;
-  const location   = filterLocation.value;
-  const type       = filterType.value;
-  const source     = filterSource.value;
-  const experience = filterExperience.value;
-  const postedDays = parseInt(filterPosted.value, 10);
-
-  const cutoff = new Date();
-  cutoff.setUTCDate(cutoff.getUTCDate() - postedDays);
-  cutoff.setUTCHours(0, 0, 0, 0);
-
-  const filtered = allJobs.filter(job => {
-    if (search) {
-      const haystack = `${job.title || ""} ${job.company || ""} ${job.skills || ""}`.toLowerCase();
-      if (!haystack.includes(search)) return false;
-    }
-    if (role) {
-      // "support" is a merged option that matches both appsupport and techsupport.
-      if (role === "support") {
-        if (job.role_type !== "appsupport" && job.role_type !== "techsupport") return false;
-      } else {
-        if (job.role_type !== role) return false;
-      }
-    }
-    if (location   && job.location_tag     !== location)  return false;
-    if (type       && job.job_type         !== type)      return false;
-    if (source     && job.source_name      !== source)    return false;
-    if (experience && job.experience_level !== experience) return false;
-
-    // Posted within filter.
-    const dateStr = job.posted_date || job.fetched_date;
-    if (dateStr) {
-      const posted = new Date(dateStr + "T00:00:00Z");
-      if (posted < cutoff) return false;
-    }
-
-    return true;
-  });
+  const state = readFilterState();
+  const filtered = allJobs.filter(job => jobMatches(job, state));
 
   renderJobs(sortJobs(filtered, filterSort.value));
+  refreshMultiSelects(state);
   writeFiltersToUrl();
 
-  // Show "Clear all filters" only when a non-default filter is active.
-  const hasActiveFilter =
-    search || role || location || type || source || experience ||
-    (postedDays !== 14) || (filterSort.value !== "relevance");
-  btnClear.hidden = !hasActiveFilter;
+  const activeCount = renderChips();
+  filtersCount.textContent = activeCount ? `(${activeCount})` : "";
+  savedCount.textContent = savedKeys.size ? `(${savedKeys.size})` : "";
+  btnClear.hidden = activeCount === 0 && filterSort.value === "relevance";
 };
 
 // --- Clear filters -------------------------------------------
 
 const clearFilters = () => {
   for (const [el, , fallback] of URL_PARAM_MAP) el.value = fallback;
+  selectedRoles.clear();
+  selectedLocations.clear();
+  filterSaved.checked = false;
   applyFilters();
 };
 
+// --- Saved jobs ----------------------------------------------
+
+/**
+ * Toggle a job's saved state and persist it to localStorage.
+ * Updates the clicked button in place (no full re-render) unless the
+ * "Saved only" view is active, where the list must shrink.
+ * @param {HTMLButtonElement} btn
+ */
+const toggleSaved = (btn) => {
+  const key = btn.dataset.key;
+  if (savedKeys.has(key)) savedKeys.delete(key);
+  else savedKeys.add(key);
+  storageSet(STORAGE_SAVED, [...savedKeys]);
+
+  if (filterSaved.checked) {
+    applyFilters();
+    return;
+  }
+  const saved = savedKeys.has(key);
+  btn.textContent = saved ? "★" : "☆";
+  btn.setAttribute("aria-pressed", String(saved));
+  btn.title = saved ? "Saved" : "Save";
+  savedCount.textContent = savedKeys.size ? `(${savedKeys.size})` : "";
+};
+
 // --- Data fetch ----------------------------------------------
+
+/**
+ * Show when the data was last refreshed, e.g. "Updated 3h ago",
+ * with the full local time on hover.
+ * @param {string|null} fetchedAt - UTC "YYYY-MM-DDTHH:MM:SS"
+ */
+const renderLastUpdated = (fetchedAt) => {
+  const date = fetchedAt ? new Date(`${fetchedAt.replace(" ", "T")}Z`) : null;
+  if (!date || Number.isNaN(date.getTime())) {
+    lastUpdated.textContent = "Last updated: unknown";
+    return;
+  }
+  lastUpdated.textContent = `Updated ${timeAgo(date)} · refreshed daily`;
+  lastUpdated.title = date.toLocaleString();
+};
 
 /**
  * Fetch all jobs from the API once on page load.
@@ -529,9 +819,7 @@ const loadJobs = async () => {
 
     jobsContainer.innerHTML = "";
 
-    lastUpdated.textContent = data.fetched_at
-      ? `Last updated: ${data.fetched_at} UTC`
-      : "Last updated: unknown";
+    renderLastUpdated(data.fetched_at);
 
     populateSourceOptions();
     applyFilters();
@@ -546,12 +834,65 @@ const loadJobs = async () => {
 
 // --- Initialise ----------------------------------------------
 
+savedKeys = new Set(storageGet(STORAGE_SAVED, []));
+lastVisitDate = storageGet(STORAGE_LAST_VISIT, null);
+storageSet(STORAGE_LAST_VISIT, new Date().toISOString().slice(0, 10));
+
 if (loadingMsg) loadingMsg.remove();
 renderSkeletons();
 readFiltersFromUrl();
 
 SELECT_FILTERS.forEach(el => el.addEventListener("change", applyFilters));
+filterSaved.addEventListener("change", applyFilters);
 filterSearch.addEventListener("input", debounce(applyFilters, SEARCH_DEBOUNCE_MS));
 btnClear.addEventListener("click", clearFilters);
+
+// Multi-select checkboxes (event delegation — lists are rebuilt on each filter).
+[[filterRole, selectedRoles], [filterLocation, selectedLocations]].forEach(([root, set]) => {
+  root.addEventListener("change", (e) => {
+    if (e.target.type !== "checkbox") return;
+    if (e.target.checked) set.add(e.target.value);
+    else set.delete(e.target.value);
+    applyFilters();
+  });
+});
+
+// Close an open multi-select when clicking elsewhere or pressing Escape.
+document.addEventListener("click", (e) => {
+  document.querySelectorAll("details.multi-select[open]").forEach(d => {
+    if (!d.contains(e.target)) d.open = false;
+  });
+});
+
+// Save buttons (delegated).
+jobsContainer.addEventListener("click", (e) => {
+  const btn = e.target.closest(".btn-save");
+  if (btn) toggleSaved(btn);
+});
+
+// Mobile: collapse the filter grid behind a toggle button.
+btnFilters.addEventListener("click", () => {
+  const open = btnFilters.getAttribute("aria-expanded") !== "true";
+  btnFilters.setAttribute("aria-expanded", String(open));
+  filterRowMain.classList.toggle("is-open", open);
+});
+
+// Keyboard: "/" focuses search; Escape clears it or closes a multi-select.
+document.addEventListener("keydown", (e) => {
+  const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName);
+  if (e.key === "/" && !typing) {
+    e.preventDefault();
+    filterSearch.focus();
+  } else if (e.key === "Escape") {
+    const openMenu = document.querySelector("details.multi-select[open]");
+    if (openMenu) {
+      openMenu.open = false;
+      openMenu.querySelector("summary").focus();
+    } else if (document.activeElement === filterSearch && filterSearch.value) {
+      filterSearch.value = "";
+      applyFilters();
+    }
+  }
+});
 
 loadJobs();
