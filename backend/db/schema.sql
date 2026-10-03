@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     skills           TEXT,
     experience_level TEXT,
     role_type        TEXT,
+    dedup_key        TEXT,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS jobs_staging (
     skills           TEXT,
     experience_level TEXT,
     role_type        TEXT,
+    dedup_key        TEXT,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -44,4 +46,19 @@ CREATE TABLE IF NOT EXISTS scrape_logs (
     http_status      INTEGER,
     duration_seconds REAL,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Per-slug ATS polling history — drives hot/cold slug pruning.
+CREATE TABLE IF NOT EXISTS slug_stats (
+    ats               TEXT NOT NULL,
+    slug              TEXT NOT NULL,
+    last_checked_date DATE,
+    last_hit_date     DATE,
+    PRIMARY KEY (ats, slug)
+);
+
+-- Small key/value store: last_swap_at, run_lock.
+CREATE TABLE IF NOT EXISTS scrape_meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
 );
