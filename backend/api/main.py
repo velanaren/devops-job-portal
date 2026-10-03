@@ -51,6 +51,21 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def revalidate_static_files(request: Request, call_next):
+    """
+    Make browsers revalidate the frontend files (HTML/CSS/JS) on every load.
+
+    Without this, a browser can keep an old app.js after a deploy while
+    loading the new index.html, which breaks the page. Revalidation is cheap:
+    unchanged files return 304 via their ETag. /api/* keeps its own headers.
+    """
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
+
 def start_scheduler() -> None:
     """
     Schedule the daily scraper job using APScheduler.

@@ -661,7 +661,7 @@ const jobMatches = (job, state, ignore) => {
  * Build (or rebuild) a multi-select checkbox list with live counts.
  * Counts reflect all other active filters, so a user sees how many
  * jobs each option would add.
- * @param {HTMLDetailsElement} root
+ * @param {HTMLElement} root - .multi-select wrapper
  * @param {Array} options - [{value, label, types?}]
  * @param {Set} selected
  * @param {Function} countFor - option → number
@@ -676,7 +676,7 @@ const renderMultiSelect = (root, options, selected, countFor, allLabel) => {
       <span class="multi-count">${countFor(o)}</span>
     </label>`).join("");
 
-  const summary = root.querySelector("summary");
+  const summary = root.querySelector(".multi-summary span");
   if (selected.size === 0) summary.textContent = allLabel;
   else if (selected.size === 1) {
     summary.textContent = options.find(o => selected.has(o.value))?.label || allLabel;
@@ -857,10 +857,33 @@ btnClear.addEventListener("click", clearFilters);
   });
 });
 
-// Close an open multi-select when clicking elsewhere or pressing Escape.
+// --- Multi-select open/close (button + panel; no <details>) ---
+
+/**
+ * Open or close one multi-select panel, closing any other open one.
+ * @param {HTMLElement} root - .multi-select wrapper
+ * @param {boolean} open
+ */
+const setMultiOpen = (root, open) => {
+  if (open) document.querySelectorAll(".multi-select.is-open").forEach(r => r !== root && setMultiOpen(r, false));
+  root.classList.toggle("is-open", open);
+  root.querySelector(".multi-options").hidden = !open;
+  root.querySelector(".multi-summary").setAttribute("aria-expanded", String(open));
+};
+
+[filterRole, filterLocation].forEach(root => {
+  root.querySelector(".multi-summary").addEventListener("click", () => {
+    setMultiOpen(root, !root.classList.contains("is-open"));
+  });
+});
+
+// Close an open multi-select when clicking anywhere outside it.
 document.addEventListener("click", (e) => {
-  document.querySelectorAll("details.multi-select[open]").forEach(d => {
-    if (!d.contains(e.target)) d.open = false;
+  // Option lists are rebuilt on every change, so the clicked node may already
+  // be detached — that click was inside a panel, not outside.
+  if (!e.target.isConnected) return;
+  document.querySelectorAll(".multi-select.is-open").forEach(root => {
+    if (!root.contains(e.target)) setMultiOpen(root, false);
   });
 });
 
@@ -884,10 +907,10 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     filterSearch.focus();
   } else if (e.key === "Escape") {
-    const openMenu = document.querySelector("details.multi-select[open]");
+    const openMenu = document.querySelector(".multi-select.is-open");
     if (openMenu) {
-      openMenu.open = false;
-      openMenu.querySelector("summary").focus();
+      setMultiOpen(openMenu, false);
+      openMenu.querySelector(".multi-summary").focus();
     } else if (document.activeElement === filterSearch && filterSearch.value) {
       filterSearch.value = "";
       applyFilters();
