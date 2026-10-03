@@ -61,16 +61,16 @@ class TestMatchesKeyword:
         assert matches_keyword("IT Operations Analyst") is True
 
     def test_matches_service_desk(self):
-        assert matches_keyword("Service Desk Analyst") is True
+        assert matches_keyword("Service Desk Analyst") is False  # helpdesk excluded by default
 
     def test_matches_helpdesk(self):
-        assert matches_keyword("Helpdesk Technician") is True
+        assert matches_keyword("Helpdesk Technician") is False
 
     def test_matches_help_desk(self):
-        assert matches_keyword("Help Desk Support") is True
+        assert matches_keyword("Help Desk Support") is False
 
     def test_matches_it_support(self):
-        assert matches_keyword("IT Support Specialist") is True
+        assert matches_keyword("IT Support Engineer") is False
 
     def test_matches_production_engineer(self):
         assert matches_keyword("Production Engineer") is True
@@ -103,8 +103,8 @@ class TestMatchesKeyword:
         assert matches_keyword("Production Support Engineer") is True
 
     def test_generic_support_engineer_not_matched(self):
-        # Bare "Support Engineer" is usually customer support.
-        assert matches_keyword("Support Engineer") is False
+        # Support-focused portal: generic "Support Engineer" is technical support.
+        assert matches_keyword("Support Engineer") is True
 
     def test_matches_noc_engineer(self):
         assert matches_keyword("NOC Engineer") is True
@@ -137,8 +137,9 @@ class TestMatchesKeyword:
         assert matches_keyword("Cloud Manager") is False
 
     def test_no_match_support_alone(self):
-        # "support" alone must NOT match
-        assert matches_keyword("Support Analyst") is False
+        # "support" alone must NOT match; "Support Analyst" now does.
+        assert matches_keyword("Support") is False
+        assert matches_keyword("Support Analyst") is True
 
     def test_no_match_manager(self):
         assert matches_keyword("Engineering Manager AI Fleet") is False
@@ -302,7 +303,7 @@ class TestDetectRoleType:
         assert detect_role_type("Technical Support Engineer") == "techsupport"
 
     def test_l1_support_is_helpdesk_itops(self):
-        assert detect_role_type("L1 Support Specialist") == "itops"
+        assert detect_role_type("L1 Support Specialist") == "other"
 
     def test_techsupport_l2(self):
         assert detect_role_type("L2 Support Engineer") == "techsupport"
@@ -320,22 +321,20 @@ class TestDetectRoleType:
         assert detect_role_type("NOC Analyst") == "techsupport"
 
     def test_tier1_support_is_helpdesk_itops(self):
-        assert detect_role_type("Tier 1 Support Specialist") == "itops"
+        assert detect_role_type("Tier 1 Support Specialist") == "other"
 
     def test_techsupport_tier2(self):
         assert detect_role_type("Tier 2 Support") == "techsupport"
 
     def test_techsupport_service_desk_moved_to_itops(self):
-        # service desk / helpdesk / it support moved to itops role type
-        assert detect_role_type("Service Desk Agent") == "itops"
+        assert detect_role_type("Service Desk Engineer") == "other"
 
     def test_techsupport_helpdesk_moved_to_itops(self):
-        assert detect_role_type("Helpdesk Technician") == "itops"
+        assert detect_role_type("Helpdesk Engineer") == "other"
 
     def test_techsupport_it_support_moved_to_itops(self):
-        assert detect_role_type("IT Support Specialist") == "itops"
+        assert detect_role_type("IT Support Engineer") == "other"
 
-    # --- IT Ops ---
     def test_bare_operations_engineer_is_other(self):
         assert detect_role_type("Operations Engineer") == "other"
 
@@ -362,12 +361,9 @@ class TestDetectRoleType:
         assert detect_role_type("Cloud Manager") == "other"
 
     def test_support_alone_is_other(self):
-        assert detect_role_type("Support Analyst") == "other"
+        assert detect_role_type("Support") == "other"
+        assert detect_role_type("Support Analyst") == "techsupport"
 
-
-# ---------------------------------------------------------------------------
-# detect_experience_level
-# ---------------------------------------------------------------------------
 
 class TestDetectExperienceLevel:
     def test_staff_from_staff(self):
@@ -425,3 +421,14 @@ class TestDetectExperienceLevel:
 
     def test_mid_intermediate(self):
         assert detect_experience_level("Intermediate Cloud Engineer") == "mid"
+
+
+class TestSupportExperienceLevels:
+    def test_l1_is_entry(self):
+        assert detect_experience_level("Application Support L1") == "entry"
+
+    def test_l2_is_mid(self):
+        assert detect_experience_level("L2 Application Support Engineer") == "mid"
+
+    def test_l3_is_senior(self):
+        assert detect_experience_level("L3 Production Support") == "senior"
