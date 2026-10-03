@@ -22,7 +22,7 @@ class Job(BaseModel):
 
 
 class JobsResponse(BaseModel):
-    fetched_at: str
+    fetched_at: Optional[str] = None  # last successful scrape swap (UTC)
     total: int
     jobs: list[Job]
 
