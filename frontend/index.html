@@ -8,7 +8,7 @@
   <meta name="description" content="DevOps, SRE, Platform Engineering, Cloud &amp; Infrastructure jobs — India &amp; Remote. Updated daily." />
   <meta property="og:title" content="InfraJobs" />
   <meta property="og:description" content="DevOps, SRE, Platform Engineering, Cloud &amp; Infrastructure jobs — India &amp; Remote. Updated daily." />
-  <link rel="stylesheet" href="styles.css?v=042" />
+  <link rel="stylesheet" href="styles.css?v=043" />
 </head>
 <body>
 
@@ -57,19 +57,31 @@
         <div class="filter-row" id="filter-row-main">
           <div class="filter-group">
             <span class="filter-label" id="label-role">Role</span>
-            <!-- Checkbox list built in app.js (multi-select with counts) -->
-            <details class="multi-select" id="filter-role" aria-labelledby="label-role">
-              <summary class="filter-select multi-summary">All Roles</summary>
-              <div class="multi-options" role="group" aria-labelledby="label-role"></div>
-            </details>
+            <!-- Button + checkbox panel built in app.js (not <details>: Safari renders it inconsistently) -->
+            <div class="multi-select" id="filter-role">
+              <button type="button" class="filter-select multi-summary"
+                      aria-haspopup="true" aria-expanded="false"
+                      aria-controls="filter-role-options"
+                      aria-labelledby="label-role filter-role-value">
+                <span id="filter-role-value">All Roles</span>
+              </button>
+              <div class="multi-options" id="filter-role-options" role="group"
+                   aria-labelledby="label-role" hidden></div>
+            </div>
           </div>
 
           <div class="filter-group">
             <span class="filter-label" id="label-location">Location</span>
-            <details class="multi-select" id="filter-location" aria-labelledby="label-location">
-              <summary class="filter-select multi-summary">All Locations</summary>
-              <div class="multi-options" role="group" aria-labelledby="label-location"></div>
-            </details>
+            <div class="multi-select" id="filter-location">
+              <button type="button" class="filter-select multi-summary"
+                      aria-haspopup="true" aria-expanded="false"
+                      aria-controls="filter-location-options"
+                      aria-labelledby="label-location filter-location-value">
+                <span id="filter-location-value">All Locations</span>
+              </button>
+              <div class="multi-options" id="filter-location-options" role="group"
+                   aria-labelledby="label-location" hidden></div>
+            </div>
           </div>
 
           <div class="filter-group">
@@ -161,7 +173,7 @@
     </div>
   </footer>
 
-  <script src="app.js?v=042"></script>
+  <script src="app.js?v=043"></script>
 
 </body>
 </html>
