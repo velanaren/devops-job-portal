@@ -22,6 +22,7 @@ startup catch-up racing the cron job).
 """
 
 import time
+from collections import Counter
 from datetime import date, datetime, timezone
 from typing import Callable
 
@@ -39,6 +40,7 @@ from db.database import (
     release_run_lock,
     swap_staging_to_live,
 )
+from scraper.filters import matched_keyword
 from scraper.sources.ats.ashby import fetch_jobs as fetch_ashby
 from scraper.sources.ats.greenhouse import fetch_jobs as fetch_greenhouse
 from scraper.sources.ats.lever import fetch_jobs as fetch_lever
@@ -139,6 +141,7 @@ def _run_locked() -> None:
     # --- Per-source fetch into staging --------------------------------
     total_staging_jobs = 0
     pending_logs: list[dict] = []
+    keyword_counts: Counter = Counter()
 
     for source_name, fetch_fn in SOURCES:
         start = time.monotonic()
@@ -158,6 +161,7 @@ def _run_locked() -> None:
             if filtered_count > 0:
                 print(f"  [{source_name}] {filtered_count} Global jobs excluded")
 
+            keyword_counts.update(matched_keyword(j.get("title", "")) or "?" for j in jobs)
             inserted = insert_jobs_staging(jobs) if jobs else 0
             duplicates = len(jobs) - inserted
 
@@ -202,6 +206,9 @@ def _run_locked() -> None:
 
     # --- Atomic swap: staging → live ----------------------------------
     print(f"\n{'='*60}")
+    print("[keywords] Top matched title keywords this run:")
+    for keyword, count in keyword_counts.most_common(15):
+        print(f"  {count:>5}  {keyword}")
     staging_count = count_staging()
     current_live = count_jobs()
     if should_swap(staging_count, current_live):

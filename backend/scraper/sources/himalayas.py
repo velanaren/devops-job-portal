@@ -46,9 +46,9 @@ SEARCH_TERMS = [
     "mlops",
     "observability engineer",
     "release engineer",
-    "systems engineer",
-    "tech support",
-    "it support",
+    "kubernetes",
+    "cloudops",
+    "linux administrator",
     "production engineer",
 ]
 
