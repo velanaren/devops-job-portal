@@ -99,15 +99,22 @@ def fetch_ats_companies(
 
     jobs: list[dict] = []
     results: dict[str, int] = {}
+    errors = 0
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {pool.submit(fetch_one, c, today_iso): c for c in due}
         for future in as_completed(futures):
             try:
                 company_jobs = future.result()
             except Exception:
+                errors += 1
                 continue  # errored slugs stay unrecorded so they retry next run
             jobs.extend(company_jobs)
             results[futures[future]["slug"]] = len(company_jobs)
 
+    with_hits = sum(1 for n in results.values() if n > 0)
+    print(
+        f"  [{ats}] {with_hits} companies with matching jobs, "
+        f"{len(results) - with_hits} without (incl. 404), {errors} errors"
+    )
     record_slug_results(ats, results, today_iso)
     return jobs

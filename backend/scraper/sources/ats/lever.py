@@ -10,6 +10,11 @@ from scraper.tagger import tag_location
 
 SOURCE_NAME = "Lever"
 API_BASE = "https://api.lever.co/v0/postings"
+# Companies hosted on Lever's EU instance return 404 from the US API.
+API_BASE_EU = "https://api.eu.lever.co/v0/postings"
+# Lever returns at most `limit` postings per call (default 100) — paginate.
+PAGE_SIZE = 100
+MAX_PAGES = 20
 MAX_WORKERS = 10
 SLEEP_BETWEEN = 0.2
 
@@ -19,9 +24,43 @@ HEADERS = {
 }
 
 
+def _fetch_from(base: str, slug: str) -> list[dict]:
+    """
+    Fetch every posting for a slug from one Lever region, paginating.
+
+    Lever caps each response at `limit` postings (default 100), so large
+    companies were previously truncated to their first 100 postings.
+
+    Args:
+        base: API base URL (US or EU).
+        slug: Lever site identifier.
+
+    Returns:
+        Raw list of posting dicts.
+    """
+    postings: list[dict] = []
+    for page in range(MAX_PAGES):
+        response = requests.get(
+            f"{base}/{slug}",
+            headers=HEADERS,
+            params={"mode": "json", "limit": PAGE_SIZE, "skip": page * PAGE_SIZE},
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        batch = data if isinstance(data, list) else data.get("data", [])
+        postings.extend(batch)
+        if len(batch) < PAGE_SIZE:
+            break
+        time.sleep(SLEEP_BETWEEN)
+    return postings
+
+
 def _fetch_company_jobs(slug: str) -> list[dict]:
     """
     Fetch all open job postings for a single Lever company slug.
+
+    Tries the US API first and falls back to the EU instance on 404.
 
     Args:
         slug: Lever posting identifier (e.g. 'grafanalabs').
@@ -29,17 +68,32 @@ def _fetch_company_jobs(slug: str) -> list[dict]:
     Returns:
         Raw list of posting dicts from the Lever API.
     """
-    url = f"{API_BASE}/{slug}"
-    response = requests.get(
-        url,
-        headers=HEADERS,
-        params={"mode": "json"},
-        timeout=30,
-    )
-    response.raise_for_status()
-    data = response.json()
-    # Lever returns either a list directly or {"data": [...]}
-    return data if isinstance(data, list) else data.get("data", [])
+    try:
+        return _fetch_from(API_BASE, slug)
+    except requests.HTTPError as exc:
+        if exc.response is None or exc.response.status_code != 404:
+            raise
+    time.sleep(SLEEP_BETWEEN)
+    return _fetch_from(API_BASE_EU, slug)
+
+
+def _location_raw(item: dict) -> str:
+    """
+    Combine every location a Lever posting lists into one string.
+
+    Uses categories.location plus categories.allLocations, so a job posted
+    for "San Francisco" and "Bengaluru" is tagged Bengaluru instead of being
+    dropped as Global. Adds "India" when the country code is IN.
+    """
+    categories = item.get("categories") or {}
+    locations: list[str] = []
+    for loc in [categories.get("location")] + list(categories.get("allLocations") or []):
+        if loc and loc not in locations:
+            locations.append(loc)
+    location_raw = "; ".join(locations)
+    if (item.get("country") or "").upper() == "IN" and "india" not in location_raw.lower():
+        location_raw = f"{location_raw}; India" if location_raw else "India"
+    return location_raw
 
 
 def _epoch_ms_to_date(epoch_ms: int | None, fallback: str) -> str:
@@ -76,8 +130,8 @@ def _normalise(item: dict, company_name: str, slug: str, today: str) -> dict | N
     if not matches_keyword(title, description):
         return None
 
-    categories = item.get("categories") or {}
-    location_raw = categories.get("location") or ""
+    location_raw = _location_raw(item)
+    workplace = (item.get("workplaceType") or "").lower()
 
     posted_date = _epoch_ms_to_date(item.get("createdAt"), today)
 
@@ -89,7 +143,7 @@ def _normalise(item: dict, company_name: str, slug: str, today: str) -> dict | N
         "company": company_name,
         "location_raw": location_raw,
         "location_tag": tag_location(location_raw, SOURCE_NAME),
-        "job_type": _infer_job_type(location_raw),
+        "job_type": workplace if workplace in ("remote", "hybrid", "onsite") else _infer_job_type(location_raw),
         "source_name": SOURCE_NAME,
         "source_url": source_url,
         "apply_url": apply_url,
