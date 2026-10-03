@@ -16,22 +16,24 @@ HEADERS = {
     "Accept": "application/json",
 }
 
-# 4 grouped keyword searches — exactly 4 calls/day, within Remotive's limit.
-# Terms are grouped by theme so each query covers multiple role categories.
-SEARCH_TERMS = [
-    "devops devsecops",
-    "sre site reliability platform engineer",
-    "cloud engineer infrastructure",
-    "tech support it support mlops",
+# 4 calls/day, within Remotive's limit. Multi-word combined queries
+# ("sre site reliability platform engineer") risk matching almost nothing,
+# so use Remotive's DevOps/Sysadmin category plus single-concept searches.
+# Each entry is the query-string params for one call.
+SEARCH_QUERIES: list[dict] = [
+    {"category": "devops"},
+    {"search": "site reliability"},
+    {"search": "platform engineer"},
+    {"search": "cloud engineer"},
 ]
 
 
-def _fetch_page(search: str) -> list[dict]:
+def _fetch_page(params: dict) -> list[dict]:
     """
-    Fetch one page of Remotive jobs for a given search term.
+    Fetch one page of Remotive jobs for one query.
 
     Args:
-        search: Keyword string to pass as the ?search= parameter.
+        params: Query-string params, e.g. {"category": "devops"} or {"search": "sre"}.
 
     Returns:
         Raw list of job dicts from the API response.
@@ -39,7 +41,7 @@ def _fetch_page(search: str) -> list[dict]:
     response = requests.get(
         API_URL,
         headers=HEADERS,
-        params={"search": search},
+        params=params,
         timeout=30,
     )
     response.raise_for_status()
@@ -94,7 +96,7 @@ def fetch_jobs() -> list[dict]:
     Fetch DevOps-relevant jobs from Remotive using multiple keyword searches.
 
     Compliance:
-    - Maximum 4 HTTP calls per daily run (one per SEARCH_TERMS entry).
+    - Maximum 4 HTTP calls per daily run (one per SEARCH_QUERIES entry).
     - User-Agent header on every request.
     - 1-second sleep between calls to be respectful.
     - Jobs must not be placed behind email gating — Remotive API is open.
@@ -106,11 +108,11 @@ def fetch_jobs() -> list[dict]:
     seen_ids: set[int] = set()
     jobs: list[dict] = []
 
-    for i, term in enumerate(SEARCH_TERMS):
+    for i, params in enumerate(SEARCH_QUERIES):
         if i > 0:
             time.sleep(1)
 
-        raw_jobs = _fetch_page(term)
+        raw_jobs = _fetch_page(params)
 
         for item in raw_jobs:
             job_id = item.get("id")
