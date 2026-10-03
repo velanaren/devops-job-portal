@@ -1,12 +1,11 @@
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 import requests
 
 from config.settings import USER_AGENT
 from scraper.filters import detect_experience_level, detect_role_type, matches_keyword
-from scraper.sources.ats import load_companies, strip_html
+from scraper.sources.ats import fetch_ats_companies, strip_html
 from scraper.tagger import tag_location
 
 SOURCE_NAME = "Lever"
@@ -145,20 +144,9 @@ def fetch_jobs() -> list[dict]:
     - User-Agent header on every request.
     - apply_url links to the original job posting on jobs.lever.co.
     - Up to MAX_WORKERS companies fetched in parallel.
+    - Cold slugs (no matching job recently) are polled weekly, not daily.
 
     Returns:
         List of normalised job dicts ready for DB insertion.
     """
-    today = date.today().isoformat()
-    companies = load_companies("lever")
-    jobs: list[dict] = []
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        futures = {pool.submit(_fetch_and_filter, c, today): c for c in companies}
-        for future in as_completed(futures):
-            try:
-                jobs.extend(future.result())
-            except Exception:
-                pass
-
-    return jobs
+    return fetch_ats_companies("lever", _fetch_and_filter, MAX_WORKERS)
