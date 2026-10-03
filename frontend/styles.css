@@ -462,11 +462,22 @@ a:hover { text-decoration: underline; color: var(--color-accent-hover); }
   outline-offset: 2px;
 }
 
-/* Multi-select (details/summary + checkbox list) */
+/* Multi-select (button + checkbox panel) — styled like .filter-select */
 .multi-select { position: relative; }
-.multi-summary { display: block; line-height: normal; font-family: inherit; list-style: none; user-select: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.multi-summary::-webkit-details-marker { display: none; }
-.multi-select[open] .multi-summary { border-color: var(--color-accent); }
+.multi-summary {
+  display: block;
+  width: 100%;
+  text-align: left;
+  line-height: normal;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.multi-select.is-open .multi-summary { border-color: var(--color-accent); }
+.multi-options[hidden] { display: none; }
 
 .multi-options {
   position: absolute;
@@ -528,6 +539,9 @@ a:hover { text-decoration: underline; color: var(--color-accent-hover); }
 /* Mobile filters toggle — hidden on wide screens */
 .btn-filters-toggle {
   display: none;
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
   width: 100%;
   margin-bottom: .6rem;
   padding: .5rem .8rem;

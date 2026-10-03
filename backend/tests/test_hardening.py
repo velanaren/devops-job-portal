@@ -125,3 +125,12 @@ def test_jobs_endpoint_cache_headers_and_fetched_at():
 
     again = client.get("/api/jobs", headers={"If-None-Match": etag})
     assert again.status_code == 304
+
+
+def test_frontend_files_are_revalidated():
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    client = TestClient(app)
+    assert client.get("/app.js").headers["cache-control"] == "no-cache"
+    assert client.get("/api/jobs").headers["cache-control"] == "public, max-age=3600"
