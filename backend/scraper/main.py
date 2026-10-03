@@ -14,19 +14,29 @@ Blue/green staging swap:
   so the portal never shows 0 jobs during a scraper run.
   If the scraper crashes mid-run, staging is discarded and the portal
   continues serving the previous day's data.
+
+Swap guard: if staging ends up far smaller than live (most sources failed),
+the swap is skipped and yesterday's data is kept — see should_swap().
+Run lock: a DB-backed lock prevents concurrent runs (multiple replicas, or
+startup catch-up racing the cron job).
 """
 
 import time
 from datetime import date, datetime, timezone
 from typing import Callable
 
+from config.settings import MIN_SWAP_JOBS, MIN_SWAP_RATIO, SCRAPE_LOCK_TTL_HOURS
 from db.database import (
+    acquire_run_lock,
     clear_staging,
     clear_today_logs,
+    count_jobs,
+    count_staging,
     init_db,
     insert_jobs_staging,
     insert_scrape_log,
     purge_old_logs,
+    release_run_lock,
     swap_staging_to_live,
 )
 from scraper.sources.ats.ashby import fetch_jobs as fetch_ashby
@@ -53,6 +63,29 @@ SOURCES: list[tuple[str, Callable[[], list[dict]]]] = [
 def _now_utc() -> str:
     """Return current UTC time as a readable string."""
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+def should_swap(staging_count: int, live_count: int) -> bool:
+    """
+    Decide whether staging is healthy enough to replace the live table.
+
+    Guards against a run where most sources failed overwriting yesterday's
+    good data with a near-empty table.
+
+    Args:
+        staging_count: Jobs in jobs_staging after all sources ran.
+        live_count:    Jobs currently in the live jobs table.
+
+    Returns:
+        True if staging has at least MIN_SWAP_JOBS jobs and at least
+        MIN_SWAP_RATIO × live_count jobs. An empty live table always swaps
+        when staging is non-empty (first run / recovery).
+    """
+    if staging_count == 0:
+        return False
+    if live_count == 0:
+        return True
+    return staging_count >= MIN_SWAP_JOBS and staging_count >= MIN_SWAP_RATIO * live_count
 
 
 def run_scraper() -> None:
@@ -86,6 +119,17 @@ def run_scraper() -> None:
 
     init_db()
 
+    if not acquire_run_lock(SCRAPE_LOCK_TTL_HOURS):
+        print("[lock] Another scraper run is in progress — skipping this run")
+        return
+    try:
+        _run_locked()
+    finally:
+        release_run_lock()
+
+
+def _run_locked() -> None:
+    """Body of run_scraper(), executed while holding the run lock."""
     today = date.today().isoformat()
 
     # --- Clear staging: live table stays untouched throughout ---------
@@ -114,16 +158,19 @@ def run_scraper() -> None:
             if filtered_count > 0:
                 print(f"  [{source_name}] {filtered_count} Global jobs excluded")
 
-            if jobs:
-                insert_jobs_staging(jobs)
+            inserted = insert_jobs_staging(jobs) if jobs else 0
+            duplicates = len(jobs) - inserted
 
-            total_staging_jobs += len(jobs)
-            print(f"[{source_name:<12}] SUCCESS — {len(jobs)} jobs ({duration:.1f}s)")
+            total_staging_jobs += inserted
+            print(
+                f"[{source_name:<12}] SUCCESS — {inserted} jobs "
+                f"({duplicates} cross-source duplicates skipped, {duration:.1f}s)"
+            )
             pending_logs.append({
                 "run_date": today,
                 "source_name": source_name,
                 "status": "success",
-                "jobs_fetched": len(jobs),
+                "jobs_fetched": inserted,
                 "error_message": None,
                 "http_status": None,
                 "duration_seconds": round(duration, 2),
@@ -155,11 +202,22 @@ def run_scraper() -> None:
 
     # --- Atomic swap: staging → live ----------------------------------
     print(f"\n{'='*60}")
-    print(f"[staging] All sources complete — swapping to live")
-    live_count = swap_staging_to_live()
-    print(f"[staging] Live portal now has {live_count} jobs")
+    staging_count = count_staging()
+    current_live = count_jobs()
+    if should_swap(staging_count, current_live):
+        print("[staging] All sources complete — swapping to live")
+        live_count = swap_staging_to_live()
+        print(f"[staging] Live portal now has {live_count} jobs")
+    else:
+        print(
+            f"[staging] SWAP SKIPPED — staging has {staging_count} jobs vs "
+            f"{current_live} live (min {MIN_SWAP_JOBS}, ratio {MIN_SWAP_RATIO}). "
+            "Keeping previous data."
+        )
+        clear_staging()
 
-    # --- Write scrape logs only after successful swap -----------------
+    # --- Write scrape logs (also when the swap was skipped, so the
+    # startup catch-up does not re-run the scraper repeatedly) ---------
     clear_today_logs(today)
     for log in pending_logs:
         insert_scrape_log(log)
