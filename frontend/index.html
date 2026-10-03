@@ -36,49 +36,40 @@
             <input type="search"
                    id="filter-search"
                    class="filter-search"
-                   placeholder="Search title, company or skills…"
+                   placeholder="Search title, company, skills or city…  (press /)"
                    autocomplete="off" />
           </div>
 
           <div class="filter-group filter-group-sort">
             <label for="filter-sort" class="filter-label">Sort By</label>
             <select id="filter-sort" class="filter-select">
-              <option value="relevance">Relevance</option>
+              <option value="relevance">Recommended</option>
               <option value="newest">Newest First</option>
             </select>
           </div>
         </div>
 
-        <div class="filter-row">
+        <button type="button" class="btn-filters-toggle" id="btn-filters-toggle"
+                aria-expanded="false" aria-controls="filter-row-main">
+          Filters <span class="filters-toggle-count" id="filters-toggle-count"></span>
+        </button>
+
+        <div class="filter-row" id="filter-row-main">
           <div class="filter-group">
-            <label for="filter-role" class="filter-label">Role</label>
-            <select id="filter-role" class="filter-select">
-              <option value="">All Roles</option>
-              <option value="devops">DevOps / DevSecOps</option>
-              <option value="sre">SRE / Site Reliability</option>
-              <option value="platform">Platform Engineer</option>
-              <option value="mlops">MLOps</option>
-              <option value="cloud">Cloud Engineer</option>
-              <option value="infra">Infrastructure / Systems</option>
-              <option value="support">Application / Production / Technical Support</option>
-              <option value="itops">IT Operations / DBA</option>
-            </select>
+            <span class="filter-label" id="label-role">Role</span>
+            <!-- Checkbox list built in app.js (multi-select with counts) -->
+            <details class="multi-select" id="filter-role" aria-labelledby="label-role">
+              <summary class="filter-select multi-summary">All Roles</summary>
+              <div class="multi-options" role="group" aria-labelledby="label-role"></div>
+            </details>
           </div>
 
           <div class="filter-group">
-            <label for="filter-location" class="filter-label">Location</label>
-            <select id="filter-location" class="filter-select">
-              <option value="">All Locations</option>
-              <option value="Remote Global">🌍 Remote Global</option>
-              <option value="Remote India">🇮🇳 Remote India</option>
-              <option value="Bengaluru">📍 Bengaluru</option>
-              <option value="Chennai">📍 Chennai</option>
-              <option value="Hyderabad">📍 Hyderabad</option>
-              <option value="Pune">📍 Pune</option>
-              <option value="Mumbai">📍 Mumbai</option>
-              <option value="Delhi NCR">📍 Delhi NCR</option>
-              <option value="Other India">🇮🇳 Other India</option>
-            </select>
+            <span class="filter-label" id="label-location">Location</span>
+            <details class="multi-select" id="filter-location" aria-labelledby="label-location">
+              <summary class="filter-select multi-summary">All Locations</summary>
+              <div class="multi-options" role="group" aria-labelledby="label-location"></div>
+            </details>
           </div>
 
           <div class="filter-group">
@@ -121,9 +112,15 @@
           </div>
         </div>
 
+        <div class="active-chips" id="active-chips" aria-label="Active filters"></div>
+
         <div class="filters-meta">
-          <span class="job-count" id="job-count">0 jobs found</span>
-          <button class="btn-clear" id="btn-clear" hidden>Clear all filters</button>
+          <span class="job-count" id="job-count" role="status" aria-live="polite">0 jobs found</span>
+          <label class="saved-toggle">
+            <input type="checkbox" id="filter-saved" />
+            ★ Saved only <span id="saved-count"></span>
+          </label>
+          <button type="button" class="btn-clear" id="btn-clear" hidden>Clear all filters</button>
         </div>
 
       </div>
