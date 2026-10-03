@@ -1014,6 +1014,35 @@ table unchanged; duplicate company+title across sources stored once;
 
 ---
 
+**TASK-041**
+**Owner:** 🤖 Claude
+**Title:** Keyword review — tighter role matching, fewer false positives
+
+```
+1. Title-only matching (description fallback removed — it was dead code,
+   since role_type comes from the title and 'other' is discarded)
+2. Single keyword source: ROLE_TYPE_MAP drives matches_keyword and
+   detect_role_type; tools/discover_companies.py imports it too
+3. EXCLUDE_PATTERNS: data/frontend/mobile/payments platform, mechanical /
+   manufacturing / process / hardware, embedded, customer support/success,
+   sales / recruiter, media production
+4. Qualified ambiguous phrases: "systems engineer" needs an infra qualifier
+   (Linux, Cloud, Network, ...); bare "support engineer" and "operations
+   engineer" no longer match
+5. New titles: Kubernetes/Terraform engineer, CI/CD, build & release,
+   developer productivity/experience, CloudOps, FinOps, cloud security,
+   observability, infra lead, storage/virtualisation, L2/L3 support
+6. Helpdesk / service desk / L1 roles behind INCLUDE_HELPDESK (default true)
+7. Remotive: category=devops + single-concept searches (4 calls)
+8. Scraper prints top matched keywords per run
+9. tests/test_keyword_corpus.py — labelled real-world titles
+```
+**Depends on:** TASK-013
+**Acceptance:** Corpus tests pass; bare "Systems Engineer", "Data Platform
+Engineer", "Customer Support Engineer" are rejected
+
+---
+
 ## Task Summary
 
 | Phase | Epic | Tasks | Owner |
