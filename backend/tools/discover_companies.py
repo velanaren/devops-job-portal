@@ -63,40 +63,12 @@ SLEEP_BETWEEN = 1.0
 CHECKPOINT_EVERY = 50
 
 # ---------------------------------------------------------------------------
-# Role keyword matching (mirrors scraper/filters.py)
+# Role keyword matching — reuses scraper/filters.py so discovery and the
+# daily scraper always agree on what counts as a relevant job.
 # ---------------------------------------------------------------------------
 
-_STRICT_ROLE_PATTERNS: list[str] = [
-    r"\bdevops\b", r"\bdev ops\b", r"\bdevsecops\b", r"\bgitops\b",
-    r"\baiops\b", r"\bdataops\b",
-    r"\bsre\b", r"\bsite reliability\b", r"\breliability engineer\b",
-    r"\bproduction engineer\b", r"\bdatabase reliability\b",
-    r"\bplatform engineer\b", r"\bplatform engineering\b", r"\bplatform operations\b",
-    r"\bcloud engineer\b", r"\bcloud infrastructure\b", r"\bcloud operations\b",
-    r"\bcloud platform\b", r"\bcloud administrator\b", r"\bcloud architect\b",
-    r"\baws engineer\b", r"\bazure engineer\b", r"\bgcp engineer\b", r"\bcloud devops\b",
-    r"\binfrastructure engineer\b", r"\binfra engineer\b",
-    r"\bsystems engineer\b", r"\bsystems administrator\b", r"\bsysadmin\b",
-    r"\bnetwork engineer\b", r"\bnetwork operations\b",
-    r"\bit infrastructure\b", r"\blinux administrator\b", r"\bnetwork administrator\b",
-    r"\blinux engineer\b", r"\binfrastructure operations\b",
-    r"\brelease engineer\b", r"\bbuild engineer\b", r"\bci/cd engineer\b",
-    r"\bobservability engineer\b", r"\bmonitoring engineer\b",
-    r"\bmlops\b", r"\bml engineer\b", r"\bml infrastructure\b", r"\bml platform\b",
-    r"\bai platform\b", r"\bai infrastructure\b", r"\bllmops\b",
-    r"\bapplication support\b", r"\bapp support\b",
-    r"\bproduction support\b", r"\bprod support\b", r"\bplatform support\b",
-    r"\bsoftware support\b", r"\bops support\b", r"\boperations support\b",
-    r"\btech support\b", r"\btechnical support\b",
-    r"\bsupport engineer\b", r"\bnoc engineer\b", r"\bnoc analyst\b",
-    r"\btier 1 support\b", r"\btier 2 support\b", r"\btier 3 support\b",
-    r"\bit support\b", r"\bl1 support\b", r"\bl2 support\b", r"\bl3 support\b",
-    r"\bservice desk\b", r"\bhelpdesk\b", r"\bhelp desk\b",
-    r"\bit operations\b", r"\bitops\b", r"\boperations engineer\b",
-    r"\bdatabase administrator\b", r"\bdba\b",
-]
-
-_KEYWORD_RE = re.compile("|".join(_STRICT_ROLE_PATTERNS), re.IGNORECASE)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from scraper.filters import matches_keyword as _filters_matches_keyword  # noqa: E402
 
 
 def _strip_html(html: str) -> str:
@@ -105,12 +77,8 @@ def _strip_html(html: str) -> str:
 
 
 def _matches_keyword(title: str, description: str = "") -> bool:
-    """Return True if title (or fallback description) matches a role keyword."""
-    if _KEYWORD_RE.search(title):
-        return True
-    if description and _KEYWORD_RE.search(description):
-        return True
-    return False
+    """Return True if the title matches a role keyword (see scraper.filters)."""
+    return _filters_matches_keyword(title)
 
 
 # ---------------------------------------------------------------------------
