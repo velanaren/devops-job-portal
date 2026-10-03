@@ -134,3 +134,12 @@ def test_frontend_files_are_revalidated():
     client = TestClient(app)
     assert client.get("/app.js").headers["cache-control"] == "no-cache"
     assert client.get("/api/jobs").headers["cache-control"] == "public, max-age=3600"
+
+
+def test_slug_stats_reset_once_per_keywords_version():
+    db.record_slug_results("lever", {"a": 0}, "2026-10-01")
+    assert db.reset_slug_stats_if_keywords_changed("v1") is True
+    assert db.get_slug_stats("lever") == {}
+    db.record_slug_results("lever", {"a": 0}, "2026-10-02")
+    assert db.reset_slug_stats_if_keywords_changed("v1") is False
+    assert "a" in db.get_slug_stats("lever")

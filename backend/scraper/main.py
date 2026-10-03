@@ -37,10 +37,11 @@ from db.database import (
     insert_jobs_staging,
     insert_scrape_log,
     purge_old_logs,
+    reset_slug_stats_if_keywords_changed,
     release_run_lock,
     swap_staging_to_live,
 )
-from scraper.filters import matched_keyword
+from scraper.filters import KEYWORDS_VERSION, matched_keyword
 from scraper.sources.ats.ashby import fetch_jobs as fetch_ashby
 from scraper.sources.ats.greenhouse import fetch_jobs as fetch_greenhouse
 from scraper.sources.ats.lever import fetch_jobs as fetch_lever
@@ -133,6 +134,9 @@ def run_scraper() -> None:
 def _run_locked() -> None:
     """Body of run_scraper(), executed while holding the run lock."""
     today = date.today().isoformat()
+
+    if reset_slug_stats_if_keywords_changed(KEYWORDS_VERSION):
+        print(f"[slugs] Keyword rules changed ({KEYWORDS_VERSION}) — all ATS companies re-checked this run")
 
     # --- Clear staging: live table stays untouched throughout ---------
     clear_staging()

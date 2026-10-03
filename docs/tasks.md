@@ -1069,6 +1069,31 @@ persist across reloads; layout usable at 360px width
 
 ---
 
+**TASK-043**
+**Owner:** 🤖 Claude
+**Title:** Support-role focus — more application & technical support jobs
+
+```
+1. Keywords: broad appsupport (application maintenance/operations, AMS,
+   incident, service delivery, monitoring, implementation, SAP/Oracle/
+   ServiceNow support) and techsupport (support engineer/analyst/specialist,
+   technical/product/software/API support, escalation, sustaining)
+2. Exclusions narrowed: physical "maintenance" only; non-technical customer
+   service and call-centre/BPO roles (representative, agent, chat, voice)
+3. Helpdesk / service desk / IT support / L1 excluded (INCLUDE_HELPDESK=false)
+4. L1/L2/L3 in titles → entry/mid/senior experience
+5. Sources: Himalayas +5 support terms, Jobicy +2 tags, Remotive
+   customer-support category replaces the cloud engineer search
+6. KEYWORDS_VERSION: ATS slug history reset once when keywords change
+7. UI: support split into Application/Production and Technical/Product
+   options; "Support jobs" one-click view; old role=support links still work
+```
+**Depends on:** TASK-041, TASK-042
+**Acceptance:** Corpus tests pass; support titles listed in the corpus are
+classified correctly; helpdesk/call-centre titles rejected
+
+---
+
 ## Task Summary
 
 | Phase | Epic | Tasks | Owner |
