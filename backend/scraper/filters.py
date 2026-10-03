@@ -90,18 +90,37 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
         r"\bmachine learning (infrastructure|platform|operations)\b",
         r"\bai (platform|infrastructure)\b",
     ],
+    # Application / production support — supporting business applications
+    # in production (incident, maintenance, operations, enterprise apps).
     "appsupport": [
-        r"\bapplication support\b",
-        r"\bapp support\b",
+        r"\bapplication (support|maintenance|operations|managed services)\b",
+        r"\bapps? support\b",
+        r"\bams\b",
         r"\bproduction support\b",
         r"\bprod support\b",
         r"\bplatform support\b",
         r"\bops support\b",
         r"\boperations support\b",
+        r"\brun support\b",
+        r"\b(major )?incident (manager|management|analyst|engineer|coordinator)\b",
+        r"\bservice delivery (engineer|analyst|manager|lead)\b",
+        r"\bmonitoring analyst\b",
+        r"\bcommand cent(er|re)\b",
+        r"\bimplementation (engineer|specialist|consultant)\b",
+        r"\bintegration support\b",
+        r"\bsap (support|basis|ams)\b",
+        r"\boracle (apps|ebs|application|applications) support\b",
+        r"\bservicenow (admin|administrator|support)\b",
     ],
+    # Technical / product support — troubleshooting a product or platform
+    # for customers or internal users.
     "techsupport": [
-        r"\b(cloud|infrastructure|devops|kubernetes|linux|network|saas|platform) support\b",
-        r"\btechnical support engineer\b",
+        r"\btech(nical)? support\b",
+        r"\bsupport (engineer|engineering|analyst|specialist|lead|manager|consultant)\b",
+        r"\b(product|software|api|saas|solutions?|systems?|database) support\b",
+        r"\b(cloud|infrastructure|devops|kubernetes|linux|network) support\b",
+        r"\bescalation (engineer|specialist|manager)\b",
+        r"\bsustaining engineer",
         r"\bnoc (engineer|analyst|technician)\b",
         r"\bnetwork operations cent(er|re)\b",
         r"\b(l2|l3|tier 2|tier 3|level 2|level 3) support\b",
@@ -114,8 +133,9 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
     ],
 }
 
-# Entry-level IT helpdesk roles — classified as itops, toggled by
-# INCLUDE_HELPDESK so they can be switched off without code changes.
+# Entry-level IT helpdesk roles. INCLUDE_HELPDESK=true classifies them as
+# itops; otherwise (the default) they are actively excluded, because the
+# broad "support engineer/analyst" patterns above would otherwise catch them.
 HELPDESK_PATTERNS: list[str] = [
     r"\bservice desk\b",
     r"\bhelp ?desk\b",
@@ -133,14 +153,31 @@ EXCLUDE_PATTERNS: list[str] = [
     r"\b(front[\s-]?end|mobile|ios|android|web|payments?|commerce|growth|product|ads|marketing) platform\b",
     # Non-software engineering disciplines
     r"\b(mechanical|manufacturing|electrical|chemical|civil|automotive|aerospace|"
-    r"plant|process|quality|hardware|hvac|maintenance|field service)\b",
+    r"plant|process|quality|hardware|hvac|field service)\b",
+    # "maintenance" only in the physical sense — Application Maintenance
+    # (AMS) is a support role and must stay.
+    r"\b(building|facilit(y|ies)|aircraft|vehicle|machine|equipment|electrical) maintenance\b",
+    r"\bmaintenance (technician|mechanic|fitter|supervisor)\b",
     r"\bembedded\b",
     # Customer-facing / non-engineering roles that mention infra words
-    r"\bcustomer (support|success|service)\b",
+    # Non-technical customer service. "Customer Support Engineer" is kept.
+    r"\bcustomer (success|service|care|experience)\b",
+    r"\bcustomer support (representative|agent|associate|executive|specialist|advocate)\b",
+    # Call-centre / BPO support
+    r"\b(chat|voice|non[\s-]?voice|bpo|call cent(er|re))\b",
+    r"\b(representative|agent|advocate|executive)\b",
     r"\b(sales|account executive|marketing|recruit(er|ing)|talent)\b",
     # Broadcast / media production
     r"\b(video|tv|television|broadcast|media|music|film) production\b",
 ]
+
+if not INCLUDE_HELPDESK:
+    EXCLUDE_PATTERNS += HELPDESK_PATTERNS
+
+# Bump whenever role/exclude patterns change materially. The scraper resets
+# ATS slug history on a new version so every company is re-checked daily
+# against the new keywords instead of waiting for its weekly cold-slug slot.
+KEYWORDS_VERSION = "2026-10-support-v1"
 
 _ROLE_TYPE_COMPILED: dict[str, re.Pattern] = {
     role: re.compile("|".join(patterns), re.IGNORECASE)
@@ -164,6 +201,7 @@ _SENIOR_LEVEL_PATTERNS: list[str] = [
     r"\bsr\.?\b",
     r"\biii\b",
     r"\biv\b",
+    r"\b(l3|tier 3|level 3)\b",
 ]
 _ENTRY_PATTERNS: list[str] = [
     r"\bjunior\b",
@@ -172,12 +210,14 @@ _ENTRY_PATTERNS: list[str] = [
     r"\bassociate\b",
     r"\bgraduate\b",
     r"\bintern\b",
+    r"\b(l1|tier 1|level 1)\b",
 ]
 _MID_PATTERNS: list[str] = [
     r"\bii\b",
     r"\bmid[\s\-]level\b",
     r"\bintermediate\b",
     r"\bmidlevel\b",
+    r"\b(l2|tier 2|level 2)\b",
 ]
 
 

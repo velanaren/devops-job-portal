@@ -18,13 +18,14 @@ HEADERS = {
 
 # 4 calls/day, within Remotive's limit. Multi-word combined queries
 # ("sre site reliability platform engineer") risk matching almost nothing,
-# so use Remotive's DevOps/Sysadmin category plus single-concept searches.
+# so use Remotive's DevOps/Sysadmin and Customer Support categories plus
+# single-concept searches. Cloud roles are covered by the DevOps category.
 # Each entry is the query-string params for one call.
 SEARCH_QUERIES: list[dict] = [
     {"category": "devops"},
     {"search": "site reliability"},
     {"search": "platform engineer"},
-    {"search": "cloud engineer"},
+    {"category": "customer-support"},  # technical/product support roles
 ]
 
 

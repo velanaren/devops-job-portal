@@ -22,7 +22,7 @@ FRONTEND_ORIGIN: str = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000"
 # --- Scraper ---
 SCRAPE_SCHEDULE: str = os.environ.get("SCRAPE_SCHEDULE", "0 1 * * *")
 # Include entry-level IT helpdesk / service desk roles (classified as itops).
-INCLUDE_HELPDESK: bool = os.environ.get("INCLUDE_HELPDESK", "true").lower() in ("1", "true", "yes")
+INCLUDE_HELPDESK: bool = os.environ.get("INCLUDE_HELPDESK", "false").lower() in ("1", "true", "yes")
 # Skip the staging→live swap (keep yesterday's data) when staging has fewer
 # than MIN_SWAP_JOBS jobs or less than MIN_SWAP_RATIO × the current live count.
 MIN_SWAP_JOBS: int = int(os.environ.get("MIN_SWAP_JOBS", "50"))
