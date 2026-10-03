@@ -1094,6 +1094,27 @@ classified correctly; helpdesk/call-centre titles rejected
 
 ---
 
+**TASK-044**
+**Owner:** 🤖 Claude
+**Title:** Get more jobs from existing sources — Himalayas, Lever, Ashby
+
+```
+1. Himalayas: paginate each search term (20/page, up to 5 pages), stopping
+   on a short page or no new jobs; 1.1s between calls (limit 60 req/min)
+2. Lever: paginate with limit/skip (API returns max 100 per call); fall
+   back to the EU instance (api.eu.lever.co) on 404; tag using every
+   listed location (allLocations) and country code; use workplaceType
+3. Ashby: tag using primary + secondaryLocations (and postal country);
+   skip isListed=false; use workplaceType
+4. Per-run stats: Himalayas calls/results; ATS companies with/without
+   matches and error counts
+```
+**Depends on:** TASK-043
+**Acceptance:** Mocked tests cover pagination, EU fallback and
+multi-location tagging; first live run shows higher Himalayas/Lever/Ashby counts
+
+---
+
 ## Task Summary
 
 | Phase | Epic | Tasks | Owner |
