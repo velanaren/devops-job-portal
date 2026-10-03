@@ -33,9 +33,13 @@ const ROLE_OPTIONS = [
   { value: "mlops",    label: "MLOps",                    types: ["mlops"] },
   { value: "cloud",    label: "Cloud Engineer",           types: ["cloud"] },
   { value: "infra",    label: "Infrastructure / Systems", types: ["infra"] },
-  { value: "support",  label: "App / Prod / Tech Support", types: ["appsupport", "techsupport"] },
+  { value: "appsupport",  label: "Application / Production Support", types: ["appsupport"] },
+  { value: "techsupport", label: "Technical / Product Support",      types: ["techsupport"] },
   { value: "itops",    label: "IT Operations / DBA",      types: ["itops"] },
 ];
+
+// Roles selected by the "Support jobs" shortcut.
+const SUPPORT_ROLES = ["appsupport", "techsupport"];
 
 // Short role label shown on each card, keyed by role_type.
 const ROLE_LABELS = {
@@ -374,7 +378,12 @@ const readFiltersFromUrl = () => {
   for (const [set, param, options] of MULTI_PARAM_MAP) {
     set.clear();
     const valid = new Set(options.map(o => o.value));
-    (params.get(param) || "").split(",").filter(v => valid.has(v)).forEach(v => set.add(v));
+    (params.get(param) || "")
+      .split(",")
+      // Links shared before the support split used role=support.
+      .flatMap(v => (param === "role" && v === "support" ? SUPPORT_ROLES : [v]))
+      .filter(v => valid.has(v))
+      .forEach(v => set.add(v));
   }
   filterSaved.checked = params.get("saved") === "1";
 };
@@ -885,6 +894,13 @@ document.addEventListener("click", (e) => {
   document.querySelectorAll(".multi-select.is-open").forEach(root => {
     if (!root.contains(e.target)) setMultiOpen(root, false);
   });
+});
+
+// "Support jobs" shortcut: select exactly the two support roles.
+document.getElementById("btn-support-view").addEventListener("click", () => {
+  selectedRoles.clear();
+  SUPPORT_ROLES.forEach(r => selectedRoles.add(r));
+  applyFilters();
 });
 
 // Save buttons (delegated).
