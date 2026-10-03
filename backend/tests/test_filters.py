@@ -14,8 +14,8 @@ class TestMatchesKeyword:
     def test_matches_sre_in_title(self):
         assert matches_keyword("Site Reliability Engineer") is True
 
-    def test_matches_keyword_in_description_only(self):
-        assert matches_keyword("Software Engineer", "looking for a platform engineer") is True
+    def test_description_is_ignored(self):
+        assert matches_keyword("Software Engineer", "looking for a platform engineer") is False
 
     def test_matches_case_insensitive(self):
         assert matches_keyword("CLOUD ENGINEER") is True
@@ -102,8 +102,9 @@ class TestMatchesKeyword:
     def test_matches_production_support(self):
         assert matches_keyword("Production Support Engineer") is True
 
-    def test_matches_support_engineer(self):
-        assert matches_keyword("Support Engineer") is True
+    def test_generic_support_engineer_not_matched(self):
+        # Bare "Support Engineer" is usually customer support.
+        assert matches_keyword("Support Engineer") is False
 
     def test_matches_noc_engineer(self):
         assert matches_keyword("NOC Engineer") is True
@@ -222,8 +223,12 @@ class TestDetectRoleType:
     def test_infra_infrastructure_engineer(self):
         assert detect_role_type("Infrastructure Engineer") == "infra"
 
-    def test_infra_systems_engineer(self):
-        assert detect_role_type("Systems Engineer") == "infra"
+    def test_bare_systems_engineer_is_other(self):
+        # Infosys/TCS-style fresher grade — needs an infra qualifier.
+        assert detect_role_type("Systems Engineer") == "other"
+
+    def test_infra_linux_systems_engineer(self):
+        assert detect_role_type("Linux Systems Engineer") == "infra"
 
     def test_infra_sysadmin(self):
         assert detect_role_type("Sysadmin") == "infra"
@@ -296,8 +301,8 @@ class TestDetectRoleType:
     def test_techsupport(self):
         assert detect_role_type("Technical Support Engineer") == "techsupport"
 
-    def test_techsupport_l1(self):
-        assert detect_role_type("L1 Support Specialist") == "techsupport"
+    def test_l1_support_is_helpdesk_itops(self):
+        assert detect_role_type("L1 Support Specialist") == "itops"
 
     def test_techsupport_l2(self):
         assert detect_role_type("L2 Support Engineer") == "techsupport"
@@ -305,8 +310,8 @@ class TestDetectRoleType:
     def test_techsupport_l3(self):
         assert detect_role_type("L3 Support Analyst") == "techsupport"
 
-    def test_techsupport_support_engineer(self):
-        assert detect_role_type("Support Engineer") == "techsupport"
+    def test_techsupport_cloud_support_engineer(self):
+        assert detect_role_type("Cloud Support Engineer") == "techsupport"
 
     def test_techsupport_noc_engineer(self):
         assert detect_role_type("NOC Engineer") == "techsupport"
@@ -314,8 +319,8 @@ class TestDetectRoleType:
     def test_techsupport_noc_analyst(self):
         assert detect_role_type("NOC Analyst") == "techsupport"
 
-    def test_techsupport_tier1(self):
-        assert detect_role_type("Tier 1 Support Specialist") == "techsupport"
+    def test_tier1_support_is_helpdesk_itops(self):
+        assert detect_role_type("Tier 1 Support Specialist") == "itops"
 
     def test_techsupport_tier2(self):
         assert detect_role_type("Tier 2 Support") == "techsupport"
@@ -331,8 +336,8 @@ class TestDetectRoleType:
         assert detect_role_type("IT Support Specialist") == "itops"
 
     # --- IT Ops ---
-    def test_itops_operations_engineer(self):
-        assert detect_role_type("Operations Engineer") == "itops"
+    def test_bare_operations_engineer_is_other(self):
+        assert detect_role_type("Operations Engineer") == "other"
 
     def test_itops_it_operations(self):
         assert detect_role_type("IT Operations Analyst") == "itops"
