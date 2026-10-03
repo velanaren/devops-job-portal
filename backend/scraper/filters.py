@@ -57,7 +57,6 @@ _STRICT_ROLE_PATTERNS: list[str] = [
     r"\bmonitoring engineer\b",
     # MLOps / ML Infrastructure
     r"\bmlops\b",
-    r"\bml engineer\b",
     r"\bml infrastructure\b",
     r"\bml platform\b",
     r"\bai platform\b",
@@ -154,7 +153,6 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
     ],
     "mlops": [
         r"\bmlops\b",
-        r"\bml engineer\b",
         r"\bml infrastructure\b",
         r"\bml platform\b",
         r"\bai platform\b",
@@ -284,16 +282,20 @@ def detect_role_type(title: str) -> str:
 
 def detect_experience_level(title: str, description: str = "") -> str:
     """
-    Detect experience level from title and description using keyword heuristics.
+    Detect experience level from the job title using keyword heuristics.
+
+    Only the title is inspected: descriptions routinely say things like
+    "lead projects" or "work with senior engineers", which caused most jobs
+    to be mis-tagged as staff/senior.
 
     Args:
         title:       Job title string.
-        description: Optional job description text.
+        description: Ignored; kept for call-site compatibility.
 
     Returns:
         One of: 'staff', 'senior', 'entry', 'mid'.
     """
-    haystack = _normalise(f"{title} {description}")
+    haystack = _normalise(title)
 
     if any(re.search(p, haystack) for p in _SENIOR_PATTERNS):
         return "staff"
