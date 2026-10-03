@@ -405,3 +405,36 @@ class TestGlobal:
 
     def test_toronto(self):
         assert tag_location("Toronto, Canada", "Greenhouse") == "Global"
+
+
+
+class TestApacAndTimezones:
+    def test_remote_apac(self):
+        assert tag_location("Remote - APAC", "Greenhouse") == "Remote APAC"
+
+    def test_asia_pacific(self):
+        assert tag_location("Asia Pacific", "Lever") == "Remote APAC"
+
+    def test_us_or_apac_kept(self):
+        assert tag_location("Remote - US; Remote - APAC", "Ashby") == "Remote APAC"
+
+    def test_ist_timezone_is_remote_india(self):
+        assert tag_location("Remote - IST timezone", "Greenhouse") == "Remote India"
+
+    def test_utc_plus_530(self):
+        assert tag_location("Remote (UTC+5:30)", "Lever") == "Remote India"
+
+    def test_istanbul_not_ist(self):
+        assert tag_location("Istanbul", "Greenhouse") == "Global"
+
+    def test_remote_global_parenthesised(self):
+        assert tag_location("Remote (Global)", "Greenhouse") == "Remote Global"
+
+    def test_anywhere(self):
+        assert tag_location("Anywhere", "Ashby") == "Remote Global"
+
+    def test_emea_still_global(self):
+        assert tag_location("Remote - EMEA", "Greenhouse") == "Global"
+
+    def test_bare_remote_still_global(self):
+        assert tag_location("Remote", "Greenhouse") == "Global"
