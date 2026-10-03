@@ -152,14 +152,15 @@ def query_jobs(ttl_days: int = 14) -> list[dict]:
         CASE location_tag
             WHEN 'Remote Global' THEN 1
             WHEN 'Remote India'  THEN 2
-            WHEN 'Bengaluru'     THEN 3
-            WHEN 'Chennai'       THEN 4
-            WHEN 'Hyderabad'     THEN 5
-            WHEN 'Pune'          THEN 6
-            WHEN 'Mumbai'        THEN 7
-            WHEN 'Delhi NCR'     THEN 8
-            WHEN 'Other India'   THEN 9
-            ELSE                      10
+            WHEN 'Remote APAC'   THEN 3
+            WHEN 'Bengaluru'     THEN 4
+            WHEN 'Chennai'       THEN 5
+            WHEN 'Hyderabad'     THEN 6
+            WHEN 'Pune'          THEN 7
+            WHEN 'Mumbai'        THEN 8
+            WHEN 'Delhi NCR'     THEN 9
+            WHEN 'Other India'   THEN 10
+            ELSE                      11
         END
     """
 
