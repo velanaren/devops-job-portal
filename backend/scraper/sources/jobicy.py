@@ -16,7 +16,7 @@ HEADERS = {
     "Accept": "application/json",
 }
 
-# One call per tag — 8 calls total, well within the 1/hour compliance limit.
+# One call per tag — 9 calls total, well within the 1/hour compliance limit.
 SEARCH_TAGS = [
     "devops",
     "sre",
@@ -24,8 +24,9 @@ SEARCH_TAGS = [
     "cloud-engineer",
     "infrastructure",
     "tech-support",
-    "it-support",
     "mlops",
+    "support",
+    "technical-support",
 ]
 
 

@@ -492,3 +492,32 @@ def record_slug_results(ats: str, results: dict[str, int], today: str) -> None:
     ]
     with get_connection() as conn:
         conn.executemany(sql, params)
+
+
+def reset_slug_stats_if_keywords_changed(keywords_version: str) -> bool:
+    """
+    Clear ATS slug history once whenever the keyword rules change.
+
+    Slug pruning polls "cold" companies (no matching job in SLUG_HOT_DAYS)
+    only weekly. After a keyword change, companies that never matched the
+    old rules may now have matching jobs, so every slug is re-checked daily
+    until its hot/cold state is re-learned under the new rules.
+
+    Args:
+        keywords_version: scraper.filters.KEYWORDS_VERSION.
+
+    Returns:
+        True if the history was reset on this call.
+    """
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT value FROM scrape_meta WHERE key = 'keywords_version'"
+        ).fetchone()
+        if row and row["value"] == keywords_version:
+            return False
+        conn.execute("DELETE FROM slug_stats")
+        conn.execute(
+            "INSERT OR REPLACE INTO scrape_meta (key, value) VALUES ('keywords_version', :v)",
+            {"v": keywords_version},
+        )
+    return True
