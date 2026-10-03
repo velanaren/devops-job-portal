@@ -49,7 +49,7 @@ const ROLE_LABELS = {
 };
 
 const LOCATION_OPTIONS = [
-  "Remote Global", "Remote India", "Bengaluru", "Chennai", "Hyderabad",
+  "Remote Global", "Remote India", "Remote APAC", "Bengaluru", "Chennai", "Hyderabad",
   "Pune", "Mumbai", "Delhi NCR", "Other India",
 ].map(tag => ({ value: tag, label: tag }));
 
@@ -227,6 +227,7 @@ const locationBadge = (tag) => {
   switch (tag) {
     case "Remote Global": return { cls: "badge-remote-global", label: "🌍 Remote Global" };
     case "Remote India":  return { cls: "badge-remote-india",  label: "🇮🇳 Remote India" };
+    case "Remote APAC":   return { cls: "badge-remote-global", label: "🌏 Remote APAC" };
     case "Bengaluru":     return { cls: "badge-city",          label: "📍 Bengaluru" };
     case "Chennai":       return { cls: "badge-city",          label: "📍 Chennai" };
     case "Hyderabad":     return { cls: "badge-city",          label: "📍 Hyderabad" };
