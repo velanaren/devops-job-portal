@@ -1,6 +1,7 @@
 import os
+import re
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -31,6 +32,42 @@ def init_db() -> None:
     schema_path = Path(__file__).parent / "schema.sql"
     with get_connection() as conn:
         conn.executescript(schema_path.read_text())
+        # Migrate databases created before dedup_key existed.
+        for table in ("jobs", "jobs_staging"):
+            cols = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+            if "dedup_key" not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN dedup_key TEXT")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_staging_dedup "
+            "ON jobs_staging(dedup_key)"
+        )
+
+
+_COMPANY_SUFFIX_RE = re.compile(
+    r"\b(inc|llc|ltd|limited|corp|corporation|co|gmbh|plc|pvt|private|technologies|labs|hq)\b"
+)
+
+
+def make_dedup_key(company: str, title: str) -> str:
+    """
+    Build a cross-source dedup key from normalised company name and title.
+
+    Lower-cases, strips punctuation and common legal suffixes so that e.g.
+    "Cloudflare, Inc." / "cloudflare" and "Senior SRE" / "Senior SRE " collide.
+
+    Args:
+        company: Company name as reported by the source.
+        title:   Job title.
+
+    Returns:
+        String key of the form "<company>|<title>".
+    """
+    def _norm(text: str) -> str:
+        text = re.sub(r"[^a-z0-9]+", " ", (text or "").lower())
+        return re.sub(r"\s+", " ", text).strip()
+
+    company_norm = _norm(_COMPANY_SUFFIX_RE.sub(" ", _norm(company))).replace(" ", "")
+    return f"{company_norm}|{_norm(title)}"
 
 
 def insert_job(job: dict) -> None:
@@ -186,23 +223,46 @@ def clear_staging() -> None:
         conn.execute("DELETE FROM jobs_staging")
 
 
-def insert_jobs_staging(jobs: list[dict]) -> None:
-    """Insert jobs into staging table (not live jobs table)."""
+def insert_jobs_staging(jobs: list[dict]) -> int:
+    """
+    Insert jobs into staging table (not live jobs table), skipping duplicates.
+
+    A UNIQUE index on dedup_key (normalised company + title) means the same
+    job seen from several sources is stored once — the first source wins.
+
+    Args:
+        jobs: List of normalised job dicts.
+
+    Returns:
+        Number of rows actually inserted (duplicates excluded).
+    """
     sql = """
-        INSERT INTO jobs_staging (
+        INSERT OR IGNORE INTO jobs_staging (
             title, company, location_raw, location_tag,
             job_type, source_name, source_url, apply_url,
             posted_date, fetched_date, skills,
-            experience_level, role_type
+            experience_level, role_type, dedup_key
         ) VALUES (
             :title, :company, :location_raw, :location_tag,
             :job_type, :source_name, :source_url, :apply_url,
             :posted_date, :fetched_date, :skills,
-            :experience_level, :role_type
+            :experience_level, :role_type, :dedup_key
         )
     """
+    rows = [
+        {**job, "dedup_key": make_dedup_key(job.get("company", ""), job.get("title", ""))}
+        for job in jobs
+    ]
     with get_connection() as conn:
-        conn.executemany(sql, jobs)
+        before = conn.total_changes
+        conn.executemany(sql, rows)
+        return conn.total_changes - before
+
+
+def count_staging() -> int:
+    """Return the number of rows currently in jobs_staging."""
+    with get_connection() as conn:
+        return conn.execute("SELECT COUNT(*) FROM jobs_staging").fetchone()[0]
 
 
 def swap_staging_to_live() -> int:
@@ -230,13 +290,17 @@ def swap_staging_to_live() -> int:
         conn.execute(
             "INSERT INTO jobs (title, company, location_raw, location_tag, "
             "job_type, source_name, source_url, apply_url, posted_date, "
-            "fetched_date, skills, experience_level, role_type, created_at) "
+            "fetched_date, skills, experience_level, role_type, dedup_key, created_at) "
             "SELECT title, company, location_raw, location_tag, "
             "job_type, source_name, source_url, apply_url, posted_date, "
-            "fetched_date, skills, experience_level, role_type, created_at "
+            "fetched_date, skills, experience_level, role_type, dedup_key, created_at "
             "FROM jobs_staging"
         )
         conn.execute("DELETE FROM jobs_staging")
+        conn.execute(
+            "INSERT OR REPLACE INTO scrape_meta (key, value) VALUES ('last_swap_at', :ts)",
+            {"ts": _utc_now_str()},
+        )
         row = conn.execute("SELECT COUNT(*) FROM jobs").fetchone()
         conn.execute("COMMIT")
         return row[0]
@@ -292,3 +356,139 @@ def purge_old_logs(retention_days: int = 30) -> None:
     cutoff = (date.today() - timedelta(days=retention_days)).isoformat()
     with get_connection() as conn:
         conn.execute("DELETE FROM scrape_logs WHERE run_date < :cutoff", {"cutoff": cutoff})
+
+
+# ---------------------------------------------------------------------------
+# Scrape metadata — last swap time and the cross-process run lock
+# ---------------------------------------------------------------------------
+
+def _utc_now_str() -> str:
+    """Return the current UTC time as 'YYYY-MM-DDTHH:MM:SS'."""
+    return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def get_last_swap_at() -> str | None:
+    """
+    Return the UTC timestamp of the last successful staging→live swap.
+
+    This is when the live data was actually produced, and is what the
+    frontend shows as "Last updated". None if no swap has happened yet.
+    """
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT value FROM scrape_meta WHERE key = 'last_swap_at'"
+        ).fetchone()
+    return row["value"] if row else None
+
+
+def has_run_today(today: str) -> bool:
+    """
+    Return True if any scrape_logs entry exists for the given run date.
+
+    Args:
+        today: ISO date string (YYYY-MM-DD).
+    """
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM scrape_logs WHERE run_date = :today LIMIT 1", {"today": today}
+        ).fetchone()
+    return row is not None
+
+
+def acquire_run_lock(ttl_hours: float) -> bool:
+    """
+    Try to take the scraper run lock stored in scrape_meta.
+
+    Prevents duplicate concurrent scrapes when several API replicas (or a
+    startup catch-up and the cron job) fire at once. A lock older than
+    ttl_hours is treated as stale (crashed run) and taken over.
+
+    Args:
+        ttl_hours: Age after which an existing lock is considered stale.
+
+    Returns:
+        True if the lock was acquired, False if another run holds it.
+    """
+    db_path = _get_db_path()
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(db_path, isolation_level=None)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT value FROM scrape_meta WHERE key = 'run_lock'").fetchone()
+        now = datetime.now(tz=timezone.utc)
+        if row and row[0]:
+            held_since = datetime.strptime(row[0], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+            if now - held_since < timedelta(hours=ttl_hours):
+                conn.execute("ROLLBACK")
+                return False
+        conn.execute(
+            "INSERT OR REPLACE INTO scrape_meta (key, value) VALUES ('run_lock', :ts)",
+            {"ts": now.strftime("%Y-%m-%dT%H:%M:%S")},
+        )
+        conn.execute("COMMIT")
+        return True
+    except Exception:
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.close()
+
+
+def release_run_lock() -> None:
+    """Release the scraper run lock."""
+    with get_connection() as conn:
+        conn.execute("DELETE FROM scrape_meta WHERE key = 'run_lock'")
+
+
+# ---------------------------------------------------------------------------
+# ATS slug stats — hot/cold pruning
+# ---------------------------------------------------------------------------
+
+def get_slug_stats(ats: str) -> dict[str, dict]:
+    """
+    Return polling history for every known slug of one ATS.
+
+    Args:
+        ats: 'greenhouse', 'lever' or 'ashby'.
+
+    Returns:
+        Dict slug → {"last_checked_date": str|None, "last_hit_date": str|None}.
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT slug, last_checked_date, last_hit_date FROM slug_stats WHERE ats = :ats",
+            {"ats": ats},
+        ).fetchall()
+    return {
+        row["slug"]: {
+            "last_checked_date": row["last_checked_date"],
+            "last_hit_date": row["last_hit_date"],
+        }
+        for row in rows
+    }
+
+
+def record_slug_results(ats: str, results: dict[str, int], today: str) -> None:
+    """
+    Record which slugs were checked today and which returned matching jobs.
+
+    Args:
+        ats:     ATS identifier.
+        results: slug → number of matching jobs returned. Slugs whose fetch
+                 errored should be omitted so they are retried next run.
+        today:   ISO date string.
+    """
+    sql = """
+        INSERT INTO slug_stats (ats, slug, last_checked_date, last_hit_date)
+        VALUES (:ats, :slug, :today, :hit)
+        ON CONFLICT(ats, slug) DO UPDATE SET
+            last_checked_date = excluded.last_checked_date,
+            last_hit_date = COALESCE(excluded.last_hit_date, slug_stats.last_hit_date)
+    """
+    params = [
+        {"ats": ats, "slug": slug, "today": today, "hit": today if hits > 0 else None}
+        for slug, hits in results.items()
+    ]
+    with get_connection() as conn:
+        conn.executemany(sql, params)

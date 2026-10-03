@@ -32,8 +32,9 @@ class TestMatchesKeyword:
     def test_matches_mlops(self):
         assert matches_keyword("MLOps Engineer") is True
 
-    def test_matches_ml_engineer(self):
-        assert matches_keyword("ML Engineer") is True
+    def test_ml_engineer_not_matched(self):
+        # Plain "ML Engineer" is mostly data-science work, not MLOps.
+        assert matches_keyword("ML Engineer") is False
 
     def test_matches_sysadmin(self):
         assert matches_keyword("Sysadmin") is True
@@ -252,8 +253,8 @@ class TestDetectRoleType:
     def test_mlops(self):
         assert detect_role_type("MLOps Engineer") == "mlops"
 
-    def test_mlops_ml_engineer(self):
-        assert detect_role_type("ML Engineer") == "mlops"
+    def test_ml_engineer_is_other(self):
+        assert detect_role_type("ML Engineer") == "other"
 
     def test_mlops_ml_infrastructure(self):
         # "ML Infrastructure Engineer" contains "infrastructure engineer" → infra wins
@@ -397,8 +398,12 @@ class TestDetectExperienceLevel:
     def test_mid_from_description(self):
         assert detect_experience_level("SRE", "3 years of experience required") == "mid"
 
-    def test_senior_in_description(self):
-        assert detect_experience_level("Cloud Engineer", "senior role with 5+ years") == "senior"
+    def test_description_ignored(self):
+        # Experience is detected from the title only.
+        assert detect_experience_level("Cloud Engineer", "senior role with 5+ years") == "mid"
+
+    def test_lead_in_description_not_staff(self):
+        assert detect_experience_level("DevOps Engineer", "you will lead projects") == "mid"
 
     def test_senior_engineer_iii(self):
         # Roman numeral III indicates senior level, not entry
