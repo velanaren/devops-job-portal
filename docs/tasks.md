@@ -1043,6 +1043,32 @@ Engineer", "Customer Support Engineer" are rejected
 
 ---
 
+**TASK-042**
+**Owner:** 🤖 Claude
+**Title:** UI usability — multi-select, chips, saved jobs, mobile filters
+
+```
+Frontend only (index.html, styles.css, app.js). Filtering stays client-side.
+
+1. Search matches every word independently across title, company, skills,
+   location, role and source ("devops bengaluru" works)
+2. Role and Location become multi-select checkbox lists with live counts
+3. Active filters shown as removable chips
+4. Filters collapse behind a "Filters" button on mobile
+5. "Relevance" sort renamed "Recommended"
+6. "New" badge for jobs posted since the viewer's last visit (localStorage)
+7. Save jobs (☆) + "Saved only" toggle (localStorage, no login)
+8. Role label on each card; duplicate listings show "Also on: <sources>"
+9. "/" focuses search, Esc clears it; empty state suggests next steps
+10. Header shows "Updated 3h ago" with local time on hover
+11. Accessibility: aria-live result count, visible focus outlines
+```
+**Depends on:** TASK-039
+**Acceptance:** All filters combine and survive reload via URL; saved jobs
+persist across reloads; layout usable at 360px width
+
+---
+
 ## Task Summary
 
 | Phase | Epic | Tasks | Owner |
