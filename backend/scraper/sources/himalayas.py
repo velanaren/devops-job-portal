@@ -34,7 +34,13 @@ HEADERS = {
     "Accept": "application/json",
 }
 
-# One HTTP call per term, 1-second sleep between calls.
+# Results per page (API maximum) and page cap per search term.
+PAGE_SIZE = 20
+MAX_PAGES_PER_TERM = 5
+# Himalayas allows 60 requests/minute; 1.1s between calls stays under it.
+SLEEP_BETWEEN = 1.1
+
+# Paginated search per term (up to MAX_PAGES_PER_TERM pages).
 SEARCH_TERMS = [
     "devops",
     "sre",
@@ -184,14 +190,39 @@ def _normalise(item: dict, today: str) -> dict | None:
     }
 
 
+def _search(term: str, offset: int) -> list[dict]:
+    """
+    Fetch one page of Himalayas search results.
+
+    Args:
+        term:   Search keyword.
+        offset: Result offset (multiple of PAGE_SIZE).
+
+    Returns:
+        Raw list of job dicts (may be shorter than PAGE_SIZE on the last page).
+    """
+    response = requests.get(
+        SEARCH_URL,
+        headers=HEADERS,
+        params={"q": term, "limit": PAGE_SIZE, "offset": offset},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json().get("jobs") or []
+
+
 def fetch_jobs() -> list[dict]:
     """
-    Fetch DevOps-relevant jobs from Himalayas using keyword searches.
+    Fetch DevOps- and support-relevant jobs from Himalayas keyword searches.
+
+    Previously only the first page (20 results) per term was read, so most
+    matches were never seen. Each term is now paginated until a short page,
+    MAX_PAGES_PER_TERM, or a page with no new jobs.
 
     Compliance:
-    - 19 HTTP calls per daily run (one per SEARCH_TERMS entry).
+    - At most len(SEARCH_TERMS) × MAX_PAGES_PER_TERM calls per daily run.
     - User-Agent header on every request.
-    - 1-second sleep between calls.
+    - SLEEP_BETWEEN seconds between calls (under the 60 req/min limit).
     - Deduplicates by job["guid"] within the run.
     - Never triggered from a web request — cron only.
 
@@ -201,30 +232,35 @@ def fetch_jobs() -> list[dict]:
     today = date.today().isoformat()
     seen_guids: set[str] = set()
     jobs: list[dict] = []
+    calls = 0
+    raw_total = 0
 
-    for i, term in enumerate(SEARCH_TERMS):
-        if i > 0:
-            time.sleep(1)
+    for term in SEARCH_TERMS:
+        for page in range(MAX_PAGES_PER_TERM):
+            if calls > 0:
+                time.sleep(SLEEP_BETWEEN)
+            raw_jobs = _search(term, page * PAGE_SIZE)
+            calls += 1
+            raw_total += len(raw_jobs)
 
-        response = requests.get(
-            SEARCH_URL,
-            headers=HEADERS,
-            params={"q": term, "limit": 20, "offset": 0},
-            timeout=30,
-        )
-        response.raise_for_status()
+            new_on_page = 0
+            for item in raw_jobs:
+                guid = item.get("guid") or ""
+                if guid and guid in seen_guids:
+                    continue
+                if guid:
+                    seen_guids.add(guid)
+                new_on_page += 1
 
-        raw_jobs = response.json().get("jobs") or []
+                normalised = _normalise(item, today)
+                if normalised:
+                    jobs.append(normalised)
 
-        for item in raw_jobs:
-            guid = item.get("guid") or ""
-            if guid and guid in seen_guids:
-                continue
-            if guid:
-                seen_guids.add(guid)
+            if len(raw_jobs) < PAGE_SIZE or new_on_page == 0:
+                break
 
-            normalised = _normalise(item, today)
-            if normalised:
-                jobs.append(normalised)
-
+    print(
+        f"  [Himalayas] {calls} calls, {raw_total} results, "
+        f"{len(seen_guids)} unique, {len(jobs)} matched keywords"
+    )
     return jobs
