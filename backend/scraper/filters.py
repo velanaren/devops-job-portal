@@ -1,101 +1,23 @@
 import re
 
+from config.settings import INCLUDE_HELPDESK
+
 # ---------------------------------------------------------------------------
-# Strict role keyword patterns — word-boundary matched, case-insensitive.
-# Generic terms (engineer, cloud, support alone) are excluded to prevent
-# false-positive matches.
+# Role keyword patterns — word-boundary matched, case-insensitive, applied to
+# the job TITLE only. Descriptions are not used: role_type is derived from
+# the title, so a description-only match would be classified 'other' and
+# dropped anyway.
+#
+# Generic terms (engineer, cloud, support, platform alone) never match.
+# Ambiguous phrases are qualified (e.g. "systems engineer" needs an infra
+# qualifier) and EXCLUDE_PATTERNS removes known false positives.
 # ---------------------------------------------------------------------------
 
-_STRICT_ROLE_PATTERNS: list[str] = [
-    # DevOps / GitOps
-    r"\bdevops\b",
-    r"\bdev ops\b",
-    r"\bdevsecops\b",
-    r"\bgitops\b",
-    r"\baiops\b",
-    r"\bdataops\b",
-    # SRE
-    r"\bsre\b",
-    r"\bsite reliability\b",
-    r"\breliability engineer\b",
-    r"\bproduction engineer\b",
-    r"\bdatabase reliability\b",
-    # Platform
-    r"\bplatform engineer\b",
-    r"\bplatform engineering\b",
-    r"\bplatform operations\b",
-    # Cloud
-    r"\bcloud engineer\b",
-    r"\bcloud infrastructure\b",
-    r"\bcloud operations\b",
-    r"\bcloud platform\b",
-    r"\bcloud administrator\b",
-    r"\bcloud architect\b",
-    r"\baws engineer\b",
-    r"\bazure engineer\b",
-    r"\bgcp engineer\b",
-    r"\bcloud devops\b",
-    # Infrastructure / Systems / Network
-    r"\binfrastructure engineer\b",
-    r"\binfra engineer\b",
-    r"\bsystems engineer\b",
-    r"\bsystems administrator\b",
-    r"\bsysadmin\b",
-    r"\bnetwork engineer\b",
-    r"\bnetwork operations\b",
-    r"\bit infrastructure\b",
-    r"\blinux administrator\b",
-    r"\bnetwork administrator\b",
-    r"\blinux engineer\b",
-    r"\binfrastructure operations\b",
-    # CI/CD / Release
-    r"\brelease engineer\b",
-    r"\bbuild engineer\b",
-    r"\bci/cd engineer\b",
-    # Observability
-    r"\bobservability engineer\b",
-    r"\bmonitoring engineer\b",
-    # MLOps / ML Infrastructure
-    r"\bmlops\b",
-    r"\bml infrastructure\b",
-    r"\bml platform\b",
-    r"\bai platform\b",
-    r"\bai infrastructure\b",
-    r"\bllmops\b",
-    # Application Support
-    r"\bapplication support\b",
-    r"\bapp support\b",
-    r"\bproduction support\b",
-    r"\bprod support\b",
-    r"\bplatform support\b",
-    r"\bsoftware support\b",
-    r"\bops support\b",
-    r"\boperations support\b",
-    # Technical Support
-    r"\btech support\b",
-    r"\btechnical support\b",
-    r"\bsupport engineer\b",
-    r"\bnoc engineer\b",
-    r"\bnoc analyst\b",
-    r"\btier 1 support\b",
-    r"\btier 2 support\b",
-    r"\btier 3 support\b",
-    r"\bit support\b",
-    r"\bl1 support\b",
-    r"\bl2 support\b",
-    r"\bl3 support\b",
-    r"\bservice desk\b",
-    r"\bhelpdesk\b",
-    r"\bhelp desk\b",
-    # IT Operations / DBA
-    r"\bit operations\b",
-    r"\bitops\b",
-    r"\boperations engineer\b",
-    r"\bdatabase administrator\b",
-    r"\bdba\b",
-]
-
-_STRICT_KEYWORD_RE = re.compile("|".join(_STRICT_ROLE_PATTERNS), re.IGNORECASE)
+# Infra qualifiers that make an otherwise generic title relevant.
+_INFRA_QUALIFIER = (
+    r"(linux|unix|windows|infrastructure|infra|cloud|network|storage|vmware|"
+    r"devops|aws|azure|gcp|kubernetes|k8s|site|platform)"
+)
 
 # Maps internal role_type value to the patterns that identify it.
 # Priority: first match wins — order matters.
@@ -105,59 +27,68 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
         r"\bdev ops\b",
         r"\bdevsecops\b",
         r"\bgitops\b",
-        r"\brelease engineer\b",
-        r"\bbuild engineer\b",
-        r"\bci/cd engineer\b",
         r"\baiops\b",
         r"\bdataops\b",
+        r"\brelease engineer",
+        r"\bbuild engineer",
+        r"\bbuild (and|&) release\b",
+        r"\bci ?/ ?cd\b",
+        r"\bcicd\b",
+        r"\bdeveloper productivity\b",
+        r"\bdeveloper experience\b",
+        r"\bdevex\b",
+        r"\bkubernetes (engineer|administrator|admin|specialist|architect)\b",
+        r"\bk8s engineer\b",
+        r"\bterraform engineer\b",
+        r"\binfrastructure as code\b",
     ],
     "sre": [
         r"\bsre\b",
         r"\bsite reliability\b",
-        r"\breliability engineer\b",
-        r"\bproduction engineer\b",
+        r"\breliability engineer",
+        r"\bplatform reliability\b",
+        r"\bproduction engineer",
         r"\bdatabase reliability\b",
     ],
     "platform": [
-        r"\bplatform engineer\b",
-        r"\bplatform engineering\b",
+        r"\bplatform engineer",
         r"\bplatform operations\b",
+        r"\binternal developer platform\b",
     ],
     "cloud": [
-        r"\bcloud engineer\b",
+        r"\bcloud engineer",
         r"\bcloud infrastructure\b",
         r"\bcloud operations\b",
+        r"\bcloud ?ops\b",
         r"\bcloud platform\b",
         r"\bcloud administrator\b",
         r"\bcloud architect\b",
-        r"\baws engineer\b",
-        r"\bazure engineer\b",
-        r"\bgcp engineer\b",
-        r"\bcloud devops\b",
+        r"\bcloud security engineer\b",
+        r"\bcloud consultant\b",
+        r"\b(aws|azure|gcp) (engineer|architect|administrator|consultant)\b",
+        r"\bfinops\b",
     ],
     "infra": [
-        r"\binfrastructure engineer\b",
-        r"\binfra engineer\b",
-        r"\bsystems engineer\b",
-        r"\bsystems administrator\b",
-        r"\bsysadmin\b",
-        r"\bnetwork engineer\b",
-        r"\bnetwork operations\b",
-        r"\bobservability engineer\b",
-        r"\bmonitoring engineer\b",
+        r"\binfrastructure (engineer|engineering|architect|lead|specialist|manager|operations|automation)\b",
+        r"\binfra (engineer|engineering|lead|architect)\b",
         r"\bit infrastructure\b",
-        r"\blinux administrator\b",
-        r"\bnetwork administrator\b",
-        r"\blinux engineer\b",
-        r"\binfrastructure operations\b",
+        r"\bsystems? administrator\b",
+        r"\bsysadmin\b",
+        r"\b(linux|unix|windows) (administrator|admin|engineer)\b",
+        rf"\b{_INFRA_QUALIFIER} systems? engineer\b",
+        rf"\bsystems? engineer\b.*\b{_INFRA_QUALIFIER}\b",
+        r"\bnetwork (engineer|operations|administrator|architect)\b",
+        r"\bobservability\b",
+        r"\bmonitoring engineer\b",
+        r"\bstorage engineer\b",
+        r"\bvirtuali[sz]ation engineer\b",
     ],
     "mlops": [
         r"\bmlops\b",
-        r"\bml infrastructure\b",
-        r"\bml platform\b",
-        r"\bai platform\b",
-        r"\bai infrastructure\b",
         r"\bllmops\b",
+        r"\bml (infrastructure|platform|ops)\b",
+        r"\bmachine learning (infrastructure|platform|operations)\b",
+        r"\bai (platform|infrastructure)\b",
     ],
     "appsupport": [
         r"\bapplication support\b",
@@ -165,40 +96,60 @@ ROLE_TYPE_MAP: dict[str, list[str]] = {
         r"\bproduction support\b",
         r"\bprod support\b",
         r"\bplatform support\b",
-        r"\bsoftware support\b",
         r"\bops support\b",
         r"\boperations support\b",
     ],
     "techsupport": [
-        r"\btech support\b",
-        r"\btechnical support\b",
-        r"\bsupport engineer\b",
-        r"\bnoc engineer\b",
-        r"\bnoc analyst\b",
-        r"\btier 1 support\b",
-        r"\btier 2 support\b",
-        r"\btier 3 support\b",
-        r"\bl1 support\b",
-        r"\bl2 support\b",
-        r"\bl3 support\b",
+        r"\b(cloud|infrastructure|devops|kubernetes|linux|network|saas|platform) support\b",
+        r"\btechnical support engineer\b",
+        r"\bnoc (engineer|analyst|technician)\b",
+        r"\bnetwork operations cent(er|re)\b",
+        r"\b(l2|l3|tier 2|tier 3|level 2|level 3) support\b",
     ],
     "itops": [
         r"\bit operations\b",
         r"\bitops\b",
-        r"\boperations engineer\b",
         r"\bdatabase administrator\b",
         r"\bdba\b",
-        r"\bit support\b",
-        r"\bservice desk\b",
-        r"\bhelpdesk\b",
-        r"\bhelp desk\b",
     ],
 }
+
+# Entry-level IT helpdesk roles — classified as itops, toggled by
+# INCLUDE_HELPDESK so they can be switched off without code changes.
+HELPDESK_PATTERNS: list[str] = [
+    r"\bservice desk\b",
+    r"\bhelp ?desk\b",
+    r"\bit support\b",
+    r"\bdesktop support\b",
+    r"\b(l1|tier 1|level 1) support\b",
+]
+if INCLUDE_HELPDESK:
+    ROLE_TYPE_MAP["itops"] = ROLE_TYPE_MAP["itops"] + HELPDESK_PATTERNS
+
+# Titles matching any of these are rejected even if a role keyword matched.
+EXCLUDE_PATTERNS: list[str] = [
+    # Product / data "platform" teams, not infrastructure platform teams
+    r"\bdata platform\b",
+    r"\b(front[\s-]?end|mobile|ios|android|web|payments?|commerce|growth|product|ads|marketing) platform\b",
+    # Non-software engineering disciplines
+    r"\b(mechanical|manufacturing|electrical|chemical|civil|automotive|aerospace|"
+    r"plant|process|quality|hardware|hvac|maintenance|field service)\b",
+    r"\bembedded\b",
+    # Customer-facing / non-engineering roles that mention infra words
+    r"\bcustomer (support|success|service)\b",
+    r"\b(sales|account executive|marketing|recruit(er|ing)|talent)\b",
+    # Broadcast / media production
+    r"\b(video|tv|television|broadcast|media|music|film) production\b",
+]
 
 _ROLE_TYPE_COMPILED: dict[str, re.Pattern] = {
     role: re.compile("|".join(patterns), re.IGNORECASE)
     for role, patterns in ROLE_TYPE_MAP.items()
 }
+_ALL_PATTERNS: list[str] = [p for patterns in ROLE_TYPE_MAP.values() for p in patterns]
+_KEYWORD_RE = re.compile("|".join(_ALL_PATTERNS), re.IGNORECASE)
+_EXCLUDE_RE = re.compile("|".join(EXCLUDE_PATTERNS), re.IGNORECASE)
+
 
 _SENIOR_PATTERNS: list[str] = [
     r"\bstaff\b",
@@ -235,32 +186,55 @@ def _normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower().strip())
 
 
+def is_excluded(title: str) -> bool:
+    """
+    Return True if the title matches a known false-positive pattern.
+
+    Args:
+        title: Job title string.
+    """
+    return bool(_EXCLUDE_RE.search(title or ""))
+
+
+def matched_keyword(title: str) -> str | None:
+    """
+    Return the role keyword text that matched the title, for run diagnostics.
+
+    Args:
+        title: Job title string.
+
+    Returns:
+        Lower-cased matched text (e.g. 'site reliability'), or None if the
+        title does not match or is excluded.
+    """
+    if not title or is_excluded(title):
+        return None
+    match = _KEYWORD_RE.search(title)
+    return match.group(0).lower() if match else None
+
+
 def matches_keyword(title: str, description: str = "") -> bool:
     """
-    Return True if the job title contains at least one strict role keyword.
+    Return True if the job title contains a role keyword and is not excluded.
 
-    Title is the primary check — a word-boundary regex match against the
-    curated role keyword list. Description is used as a fallback only (for
-    ATS sources where job titles may be generic). Generic terms such as
-    'engineer', 'cloud', or 'support' alone do NOT match.
+    Only the title is checked. Generic terms such as 'engineer', 'cloud',
+    'platform' or 'support' alone do NOT match, and titles matching
+    EXCLUDE_PATTERNS (data platform, mechanical, customer support, ...) are
+    rejected.
 
     Args:
         title:       Job title string.
-        description: Optional job description text (fallback only).
+        description: Ignored; kept for call-site compatibility.
 
     Returns:
-        True if a strict keyword match is found, False otherwise.
+        True if the title is a relevant infra/ops role, False otherwise.
     """
-    if _STRICT_KEYWORD_RE.search(title):
-        return True
-    if description and _STRICT_KEYWORD_RE.search(description):
-        return True
-    return False
+    return matched_keyword(title) is not None
 
 
 def detect_role_type(title: str) -> str:
     """
-    Detect the primary role type from a job title using strict keyword patterns.
+    Detect the primary role type from a job title.
 
     Checks role types in priority order:
       devops → sre → platform → cloud → infra → mlops →
@@ -272,8 +246,10 @@ def detect_role_type(title: str) -> str:
     Returns:
         One of: 'devops', 'sre', 'platform', 'cloud', 'infra', 'mlops',
         'appsupport', 'techsupport', 'itops'. Returns 'other' if no pattern
-        matches — the orchestrator discards jobs with role_type 'other'.
+        matches or the title is excluded — the orchestrator discards 'other'.
     """
+    if not title or is_excluded(title):
+        return "other"
     for role_type, pattern in _ROLE_TYPE_COMPILED.items():
         if pattern.search(title):
             return role_type
