@@ -37,6 +37,40 @@ def _fetch_company_jobs(slug: str) -> list[dict]:
     return data.get("jobPostings", data.get("jobs", []))
 
 
+def _location_text(loc) -> str:
+    """Return a location's display string from a str or Ashby location dict."""
+    if isinstance(loc, str):
+        return loc
+    if isinstance(loc, dict):
+        text = loc.get("location") or loc.get("locationName") or loc.get("locationStr") or ""
+        country = ((loc.get("address") or {}).get("postalAddress") or {}).get("addressCountry") or ""
+        if country and country.lower() not in text.lower():
+            text = f"{text}, {country}" if text else country
+        return text
+    return ""
+
+
+def _location_raw(item: dict) -> str:
+    """
+    Combine an Ashby job's primary and secondary locations into one string.
+
+    Previously only the primary location was read, so a job listed in
+    "San Francisco" with a secondary "Bengaluru" location was tagged Global
+    and dropped. The tagger finds the India location in the combined string.
+    """
+    locations: list[str] = []
+    primary_loc = item.get("locationName") or item.get("location")
+    primary = primary_loc if isinstance(primary_loc, dict) else {
+        "location": primary_loc,
+        "address": item.get("address"),
+    }
+    for loc in [primary] + list(item.get("secondaryLocations") or []):
+        text = _location_text(loc).strip(" ,")
+        if text and text not in locations:
+            locations.append(text)
+    return "; ".join(locations)
+
+
 def _normalise(item: dict, company_name: str, slug: str, today: str) -> dict | None:
     """
     Map a raw Ashby job dict to the DB schema.
@@ -49,13 +83,14 @@ def _normalise(item: dict, company_name: str, slug: str, today: str) -> dict | N
     if not matches_keyword(title, description):
         return None
 
+    if item.get("isListed") is False:
+        return None
+
     is_remote = item.get("isRemote", False)
-    # New API returns location as a plain string; fall back to locationName for older shape.
-    location_raw = item.get("locationName") or item.get("location") or ""
-    if isinstance(location_raw, dict):
-        location_raw = location_raw.get("locationStr", "")
+    location_raw = _location_raw(item)
     if is_remote and not location_raw:
         location_raw = "Remote"
+    workplace = (item.get("workplaceType") or "").lower()
 
     published_at = item.get("publishedAt") or ""
     posted_date = published_at[:10] if len(published_at) >= 10 else today
@@ -70,7 +105,11 @@ def _normalise(item: dict, company_name: str, slug: str, today: str) -> dict | N
         "company": company_name,
         "location_raw": location_raw,
         "location_tag": tag_location(location_raw, SOURCE_NAME),
-        "job_type": "remote" if is_remote else _infer_job_type(location_raw),
+        "job_type": (
+            "remote" if is_remote or workplace == "remote"
+            else "hybrid" if workplace == "hybrid"
+            else _infer_job_type(location_raw)
+        ),
         "source_name": SOURCE_NAME,
         "source_url": source_url,
         "apply_url": apply_url,
