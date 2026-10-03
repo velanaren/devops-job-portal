@@ -967,6 +967,53 @@ titles containing HTML characters render as text, not markup
 
 ---
 
+**TASK-040**
+**Owner:** 🤖 Claude
+**Title:** Scraper and API hardening — scheduler catch-up, dedup, slug pruning, swap guard, caching
+
+```
+1. Scheduler resilience
+   - APScheduler misfire_grace_time + coalesce on the daily job
+   - Startup catch-up: if no scrape_log exists for today and it is past
+     00:30 UTC, run the scraper now (background thread)
+   - DB-backed run lock so multiple replicas / overlapping runs cannot
+     scrape concurrently (stale lock expires after SCRAPE_LOCK_TTL_HOURS)
+
+2. Cross-source dedup
+   - dedup_key column (normalised company + title) with a UNIQUE index on
+     jobs_staging; inserts use INSERT OR IGNORE (first source wins)
+
+3. ATS slug pruning
+   - slug_stats table tracks last_checked_date / last_hit_date per slug
+   - Hot slugs (hit within SLUG_HOT_DAYS) are polled daily; cold slugs are
+     polled once a week, spread across weekdays by a stable hash
+
+4. Swap guard
+   - Skip staging→live swap (keep yesterday's data) if staging has fewer
+     than MIN_SWAP_JOBS jobs or less than MIN_SWAP_RATIO of the live count
+
+5. Correct "Last updated"
+   - /api/jobs fetched_at returns the last successful swap time, not "now"
+
+6. Experience / role detection
+   - Experience level detected from the title only
+   - "ML Engineer" no longer classified as mlops (pulled in data-science roles)
+
+7. Config source of truth
+   - backend/config/slugs/*.txt are the committed ATS lists; companies.yaml
+     is only a fallback when a slug file is absent
+
+8. HTTP caching on /api/jobs
+   - Cache-Control: public, max-age=3600 and an ETag derived from the
+     last swap time; If-None-Match returns 304
+```
+**Depends on:** TASK-015, TASK-016
+**Acceptance:** Tests pass; a run where most sources fail leaves the live
+table unchanged; duplicate company+title across sources stored once;
+/api/jobs returns Cache-Control/ETag and a fetched_at equal to the last swap
+
+---
+
 ## Task Summary
 
 | Phase | Epic | Tasks | Owner |
