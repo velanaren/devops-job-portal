@@ -1,3 +1,5 @@
+import re
+
 # ---------------------------------------------------------------------------
 # Step 1 — Source-based Remote Global
 # ---------------------------------------------------------------------------
@@ -28,6 +30,19 @@ _REMOTE_GLOBAL_KEYWORDS: tuple[str, ...] = (
     "remote worldwide",
     "remote global",
 )
+
+# Worldwide phrasing that the substring list above misses, e.g. "Remote (Global)",
+# "Anywhere", "Remote, Anywhere". Bare "Global" is deliberately NOT included
+# (companies use it for "multiple offices"). Word-boundary matched.
+_REMOTE_GLOBAL_RE = re.compile(
+    r"^anywhere$|\bremote\W+(global|anywhere)\b|\b(global|anywhere)\W+remote\b"
+)
+
+# India time zone stated instead of a place, e.g. "Remote - IST", "UTC+5:30".
+_INDIA_TIMEZONE_RE = re.compile(r"\bist\b|(utc|gmt)\s*\+\s*5:?30")
+
+# Asia-Pacific remote regions — open to candidates in India.
+_APAC_RE = re.compile(r"\bapac\b|\bapj\b|asia[\s-]*pacific|\basia\b")
 
 # ---------------------------------------------------------------------------
 # Step 3 — India city checks
@@ -104,8 +119,9 @@ def tag_location(location_raw: str, source_name: str) -> str:
         source_name:  Human-readable source name (e.g. 'RemoteOK', 'Greenhouse').
 
     Returns:
-        One of: 'Remote Global', 'Remote India', 'Bengaluru', 'Chennai',
-        'Hyderabad', 'Pune', 'Mumbai', 'Delhi NCR', 'Other India', 'Global'.
+        One of: 'Remote Global', 'Remote India', 'Remote APAC', 'Bengaluru',
+        'Chennai', 'Hyderabad', 'Pune', 'Mumbai', 'Delhi NCR', 'Other India',
+        'Global'.
     """
     loc = location_raw.lower().strip() if location_raw else ""
 
@@ -127,7 +143,7 @@ def tag_location(location_raw: str, source_name: str) -> str:
     # "Remote" alone and "Fully Remote" alone are intentionally absent from
     # the keyword list — on ATS boards those mean US/EU remote, not India.
     # ------------------------------------------------------------------
-    if any(kw in loc for kw in _REMOTE_GLOBAL_KEYWORDS):
+    if any(kw in loc for kw in _REMOTE_GLOBAL_KEYWORDS) or _REMOTE_GLOBAL_RE.search(loc):
         return "Remote Global"
 
     # ------------------------------------------------------------------
@@ -153,6 +169,18 @@ def tag_location(location_raw: str, source_name: str) -> str:
 
     if any(city in loc for city in ("delhi", "noida", "gurugram", "gurgaon", "faridabad")):
         return "Delhi NCR"
+
+    # ------------------------------------------------------------------
+    # Step 3b — India time zone and Asia-Pacific remote.
+    #
+    # "Remote - IST" means India hours → Remote India. "APAC"/"Asia" regions
+    # are open to India → Remote APAC. Checked before the US guard so that
+    # "Remote - US; Remote - APAC" is kept.
+    # ------------------------------------------------------------------
+    if _INDIA_TIMEZONE_RE.search(loc):
+        return "Remote India"
+    if _APAC_RE.search(loc):
+        return "Remote APAC"
 
     # ------------------------------------------------------------------
     # Step 4 — US false-positive guard.

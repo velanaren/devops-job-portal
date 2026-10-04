@@ -146,6 +146,7 @@ def _run_locked() -> None:
     total_staging_jobs = 0
     pending_logs: list[dict] = []
     keyword_counts: Counter = Counter()
+    excluded_locations: Counter = Counter()
 
     for source_name, fetch_fn in SOURCES:
         start = time.monotonic()
@@ -160,6 +161,10 @@ def _run_locked() -> None:
             # Discard Global-tagged jobs — these are non-India, non-remote-global
             # locations (US/EU/etc.) that are not relevant to this portal.
             before_filter = len(jobs)
+            excluded_locations.update(
+                (j.get("location_raw") or "(blank)").strip()[:60]
+                for j in jobs if j.get("location_tag") == "Global"
+            )
             jobs = [j for j in jobs if j.get("location_tag") != "Global"]
             filtered_count = before_filter - len(jobs)
             if filtered_count > 0:
@@ -213,6 +218,9 @@ def _run_locked() -> None:
     print("[keywords] Top matched title keywords this run:")
     for keyword, count in keyword_counts.most_common(15):
         print(f"  {count:>5}  {keyword}")
+    print("[locations] Top location strings excluded as Global (not India / worldwide / APAC):")
+    for location, count in excluded_locations.most_common(25):
+        print(f"  {count:>5}  {location}")
     staging_count = count_staging()
     current_live = count_jobs()
     if should_swap(staging_count, current_live):
