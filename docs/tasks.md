@@ -1115,6 +1115,25 @@ multi-location tagging; first live run shows higher Himalayas/Lever/Ashby counts
 
 ---
 
+**TASK-045**
+**Owner:** 🤖 Claude
+**Title:** Location tagging — keep APAC/worldwide/IST jobs; log excluded locations
+
+```
+Run of 2026-10-03: ~8,300 keyword matches, ~7,700 dropped as Global.
+1. "Remote APAC" tag for APAC / Asia-Pacific / Asia regions (open to India)
+2. "Remote (Global)", "Remote - Anywhere", "Anywhere" → Remote Global
+   (bare "Global" still Global — it often means multiple offices)
+3. IST / UTC+5:30 time zone → Remote India
+4. Scraper logs the top 25 location strings excluded as Global, to decide
+   further rules from data (e.g. bare "Remote")
+5. UI: Remote APAC in Location filter and badge; API sort order updated
+```
+**Depends on:** TASK-044
+**Acceptance:** Tagger tests pass; next run log lists excluded locations
+
+---
+
 ## Task Summary
 
 | Phase | Epic | Tasks | Owner |
